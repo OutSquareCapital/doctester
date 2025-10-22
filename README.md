@@ -23,5 +23,5 @@ This will discover all modules in the `src` directory, run their doctests, and g
 ## Installation
 
 ```bash
-uv add your installation instructions here
+uv add git+https://github.com/OutSquareCapital/doctester.git
 ```

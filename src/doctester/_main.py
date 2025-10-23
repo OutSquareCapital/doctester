@@ -1,47 +1,103 @@
 import doctest
-import importlib
-import pkgutil
+import shutil
 import sys
 from pathlib import Path
 from types import ModuleType
 
-from ._stubs import Files
+from . import _discovery, _stub_runner
+from ._models import TestResult
 
 
-def _get_modules(package: str) -> list[ModuleType]:
-    modules: list[ModuleType] = []
-    pkg: ModuleType = importlib.import_module(package)
-    for _, modname, ispkg in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."):
-        if not ispkg:
-            try:
-                modules.append(importlib.import_module(modname))
-            except Exception:
-                pass
-    return modules
+def _add_root_to_path(root_dir: Path) -> None:
+    sys.path.insert(0, str(root_dir.absolute()))
 
 
-def _test_modules(modules: list[ModuleType], verbose: bool) -> None:
+def _remove_root_from_path(root_dir: Path) -> None:
+    try:
+        sys.path.remove(str(root_dir.absolute()))
+    except ValueError:
+        pass
+
+
+def run_py_tests(modules: list[ModuleType], verbose: bool) -> TestResult:
     failures = 0
+    total_tests = 0
+
     for mod in modules:
         result = doctest.testmod(mod, verbose=verbose)
         failures += result.failed
-        if failures > 0:
-            print(f"\nSome doctests failed. ❌ ({failures} failures)")
+        total_tests += result.attempted
+
+    return TestResult(total=total_tests, passed=total_tests - failures)
+
+
+def run_doctester(root_dir_str: str = "src", verbose: bool = False) -> None:
+    root_dir = Path(root_dir_str)
+    if not root_dir.is_dir():
+        print(f"Error: Root directory '{root_dir_str}' not found.")
+        sys.exit(1)
+
+    _add_root_to_path(root_dir)
+
+    temp_dir = Path("doctests_temp")
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
+    temp_dir.mkdir()
+
+    if verbose:
+        print(f"Using temp directory: {temp_dir.absolute()}")
+
+    try:
+        package_name = _discovery.find_package_name(root_dir)
+        package_path = root_dir.joinpath(package_name)
+        print(f"Found package: {package_name}")
+
+        py_modules = _discovery.get_py_modules(package_name, package_path)
+        pyi_files = _discovery.get_pyi_files(package_path)
+
+        if verbose:
+            print(f"Found {len(py_modules)} Python modules.")
+            print(f"Found {len(pyi_files)} Python stub files.")
+
+        print("\nRunning .py doctests...")
+        py_result = run_py_tests(py_modules, verbose)
+
+        if py_result.total > 0:
+            print(f".py Tests Result: {py_result.passed}/{py_result.total} passed.")
+        else:
+            print("No .py doctests found.")
+
+        pyi_result = TestResult(total=0, passed=0)
+        if pyi_files:
+            print("\nRunning .pyi doctests...")
+            pyi_result = _stub_runner.run_pyi_tests(
+                pyi_files,
+                temp_dir,
+                verbose,
+            )
+            if pyi_result.total > 0:
+                print(
+                    f".pyi Tests Result: {pyi_result.passed}/{pyi_result.total} passed."
+                )
+            else:
+                print("No .pyi doctests found.")
+
+        total_failed = py_result.failed + pyi_result.failed
+
+        if total_failed > 0:
+            print(f"\nTotal Failures: {total_failed} ❌")
+            _remove_root_from_path(root_dir)
             sys.exit(1)
+        else:
+            print("\nAll doctests passed! ✅")
 
-
-def _find_package_name(src_path: str) -> str:
-    for child in Path(src_path).iterdir():
-        if child.is_dir() and (
-            child.joinpath(Files.PYSRC).exists()
-            or child.joinpath(Files.PYISRC).exists()
-        ):
-            return child.name
-    raise RuntimeError(f"No package found in {Files.SOURCE} directory.")
-
-
-def run_doctester(verbose: bool = False) -> None:
-    package_name = _find_package_name(Files.SOURCE)
-    print(f"Running doctests for package: {package_name}")
-    _test_modules(_get_modules(package_name), verbose)
-    print("\nAll doctests passed! ✅")
+    except Exception as e:
+        print(f"\nAn unexpected error occurred: {e}")
+        _remove_root_from_path(root_dir)
+        sys.exit(1)
+    finally:
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+        if verbose:
+            print("Cleaned up temp directory.")
+        _remove_root_from_path(root_dir)

@@ -1,10 +1,10 @@
 [project]
 dependencies    = []
-description     = "Add your description here"
+description     = "Simple tool to run doctests from Python stub files (.pyi) and regular Python files (.py)."
 name            = "doctester"
 readme          = "README.md"
 requires-python = ">=3.12"
-version         = "0.1.0"
+version         = "0.1.1"
 [build-system]
 build-backend = "uv_build"
 requires      = ["uv_build>=0.8.15,<0.9.0"]

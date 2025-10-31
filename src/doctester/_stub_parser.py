@@ -78,6 +78,9 @@ def _convert_doctest(
 
         source = example.source.strip()
 
+        if source.startswith("```"):
+            continue
+
         if _is_setup_code(source):
             setup_code.append(source)
         else:

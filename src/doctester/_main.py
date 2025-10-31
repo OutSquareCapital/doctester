@@ -155,10 +155,9 @@ def run_doctester(root_dir_str: str = "src", verbose: bool = False) -> None:
         _remove_root_from_path(root_dir)
 
 
-def run_on_file(file_path_str: str, verbose: bool = False) -> None:
-    file_path = Path(file_path_str)
+def run_on_file(file_path: Path, verbose: bool = False) -> None:
     if not file_path.is_file():
-        print(f"Error: File '{file_path_str}' not found or is a directory.")
+        print(f"Error: File '{file_path}' not found or is a directory.")
         print("Use run_doctester() for directories.")
         sys.exit(1)
 

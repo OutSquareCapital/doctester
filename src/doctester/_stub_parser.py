@@ -63,13 +63,12 @@ def _convert_doctest(
     block_name: str,
     docstring: str,
 ) -> str:
-    doctest_parser = doctest.DocTestParser()
-    examples = doctest_parser.parse(docstring)
+    cleaned_docstring = re.sub(r"^\s*```.*$", "", docstring, flags=re.MULTILINE)
 
     setup_code: list[str] = []
     test_blocks: list[str] = []
 
-    for example in examples:
+    for example in doctest.DocTestParser().parse(cleaned_docstring):
         if not isinstance(example, doctest.Example):
             continue
 
@@ -77,10 +76,6 @@ def _convert_doctest(
             continue
 
         source = example.source.strip()
-
-        if source.startswith("```"):
-            continue
-
         if _is_setup_code(source):
             setup_code.append(source)
         else:

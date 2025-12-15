@@ -1,5 +1,8 @@
 [project]
-dependencies    = []
+dependencies    = [
+    "loguru>=0.7.3",
+    "pyochain>=0.5.52",
+]
 description     = "Simple tool to run doctests from Python stub files (.pyi) and regular Python files (.py)."
 name            = "doctester"
 readme          = "README.md"

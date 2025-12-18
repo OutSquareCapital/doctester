@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pyochain as pc
 
-from . import _console
 from ._models import TestResult
 
 BLOCK_PATTERN = re.compile(
@@ -27,9 +26,6 @@ def process_pyi_file(
         .is_none()
     ):
         return pc.NONE
-    if verbose:
-        _console.print_info(f"Running pytest doctests for {pyi_file.name}...")
-
     return pc.Some(_run_pytest(test_file, verbose=verbose))
 
 

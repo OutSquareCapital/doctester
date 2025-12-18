@@ -7,8 +7,7 @@ import pyochain as pc
 import typer
 from rich.panel import Panel
 
-from . import _main
-from ._console import console
+from ._main import console, run_doctester, run_on_file
 from ._models import TestResult
 
 app = typer.Typer(
@@ -43,7 +42,7 @@ def run(
         )
     )
 
-    _main.run_doctester(root_dir, verbose=verbose).into(_match_res)
+    run_doctester(root_dir, verbose=verbose).into(_match_res)
 
 
 @app.command()
@@ -67,7 +66,7 @@ def file(
         )
     )
 
-    _main.run_on_file(file_path, verbose=verbose).into(_match_res)
+    run_on_file(file_path, verbose=verbose).into(_match_res)
 
 
 def _match_res(result: pc.Result[TestResult, str]) -> None:

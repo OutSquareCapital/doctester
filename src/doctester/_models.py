@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
-import pyochain as pc
+if TYPE_CHECKING:
+    import pyochain as pc
 
 
 class Dunders(StrEnum):

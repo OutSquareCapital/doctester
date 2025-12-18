@@ -9,8 +9,9 @@ from types import ModuleType
 
 import pyochain as pc
 
-from . import _console, _discovery, _stub_runner
+from . import _console, _discovery
 from ._models import TestResult
+from ._stubs import process_pyi_file
 
 
 def run_doctester(
@@ -177,7 +178,7 @@ def _run_pyi_tests(
     """Run tests for all .pyi stub files."""
     return (
         pyi_files.filter_map(
-            lambda pyi: _stub_runner.process_pyi_file(pyi, temp_dir, verbose=verbose)
+            lambda pyi: process_pyi_file(pyi, temp_dir, verbose=verbose)
         )
         .collect()
         .into(TestResult.from_seq)

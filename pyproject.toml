@@ -2,11 +2,12 @@
     dependencies = [
         "loguru>=0.7.3",
         "pyochain>=0.5.52",
-        "rich>=13.9.4",
+        "pytest>=9.0.2",
+        "rich>=14.2.0",
         "ruff>=0.14.9",
         "ty>=0.0.3",
-        "typer>=0.15.1",
-    ]
+        "typer>=0.20.0",
+]
     description = "Simple tool to run doctests from Python stub files (.pyi) and regular Python files (.py)."
     name = "doctester"
     readme = "README.md"

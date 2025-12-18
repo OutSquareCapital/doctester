@@ -9,13 +9,13 @@
         "typer>=0.20.0",
     ]
     description = "Simple tool to run doctests from Python stub files (.pyi) and regular Python files (.py)."
-    name = "doctester"
+    name = "stubtester"
     readme = "README.md"
     requires-python = ">=3.12"
     version = "0.1.3"
 
     [project.scripts]
-        doctester = "doctester._cli:app"
+        stubtester = "stubtester._cli:app"
 
 [build-system]
     build-backend = "uv_build"

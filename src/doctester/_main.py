@@ -1,15 +1,13 @@
 import contextlib
-import doctest
 import shutil
 import sys
 import traceback
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 
 import pyochain as pc
 
-from . import _console, _discovery
+from . import _console
 from ._models import TestResult
 from ._stubs import process_pyi_file
 
@@ -81,75 +79,47 @@ def _with_test_context[T](
 def _run_file_tests(
     file_path: Path, temp_dir: Path, *, verbose: bool
 ) -> pc.Result[TestResult, str]:
-    _console.print_info(f"Running doctests for single file: {file_path.name}")
+    _console.print_info(f"Running doctests for stub file: {file_path.name}")
 
-    match file_path.suffix:
-        case ".py":
-            dt_result = doctest.testfile(
-                str(file_path.absolute()),
-                module_relative=False,
+    if file_path.suffix != ".pyi":
+        return pc.Err(
+            f"Unsupported file type: {file_path.suffix}. "
+            "Only .pyi stub files are supported."
+        )
+
+    return pc.Ok(
+        pc.Iter.from_(file_path).into(
+            lambda p: _run_pyi_tests(
+                p,
+                temp_dir,
                 verbose=verbose,
             )
-            return pc.Ok(
-                TestResult(
-                    total=dt_result.attempted,
-                    passed=dt_result.attempted - dt_result.failed,
-                )
-            )
-
-        case ".pyi":
-            return pc.Ok(
-                pc.Iter.from_(file_path).into(
-                    lambda p: _run_pyi_tests(
-                        p,
-                        temp_dir,
-                        verbose=verbose,
-                    )
-                )
-            )
-
-        case _:
-            return pc.Err(
-                f"Unsupported file type: {file_path.suffix}. "
-                "Only .py and .pyi files are supported."
-            )
+        )
+    )
 
 
 def _run_package_tests(
     root_dir: Path, temp_dir: Path, *, verbose: bool
 ) -> pc.Result[TestResult, str]:
-    package_name_result = _discovery.find_package_name(root_dir).inspect(
-        lambda name: _console.print_info(f"Found package: {name}")
+    package_dir_result = _find_package_dir(root_dir).inspect(
+        lambda path: _console.print_info(f"Searching stubs in: {path}")
     )
 
-    if package_name_result.is_err():
-        return pc.Err(str(package_name_result.unwrap_err()))
+    if package_dir_result.is_err():
+        return pc.Err(str(package_dir_result.unwrap_err()))
 
-    package_name = package_name_result.unwrap()
-    package_path = root_dir.joinpath(package_name)
-
-    _console.print_info("Running .py doctests...")
-
-    def _show_founds(m: pc.Seq[Any]) -> None:
-        if verbose:
-            _console.print_info(f"Found {m.length()} files.")
-
-    py_result: TestResult = (
-        _discovery.get_py_modules(package_name, package_path)
-        .unwrap()
-        .tap(_show_founds)
-        .iter()
-        .map(lambda mod: doctest.testmod(mod, verbose=verbose))
-        .map(lambda r: TestResult(total=r.attempted, passed=r.attempted - r.failed))
-        .collect()
-        .into(TestResult.from_seq)
-    )
+    package_dir = package_dir_result.unwrap()
 
     _console.print_info("Running .pyi doctests...")
-    pyi_result: TestResult = (
-        pc.Iter(package_path.glob("**/*.pyi"))
+
+    def _show_found(files: pc.Seq[Path]) -> None:
+        if verbose:
+            _console.print_info(f"Found {files.length()} stub files.")
+
+    result: TestResult = (
+        pc.Iter(package_dir.glob("**/*.pyi"))
         .collect()
-        .tap(_show_founds)
+        .tap(_show_found)
         .iter()
         .into(
             lambda pyi: _run_pyi_tests(
@@ -159,9 +129,22 @@ def _run_package_tests(
             )
         )
     )
-    _console.print_test_summary(py_result, pyi_result)
 
-    return pc.Ok(py_result.join_with(pyi_result))
+    return pc.Ok(result)
+
+
+def _find_package_dir(root_dir: Path) -> pc.Result[Path, RuntimeError]:
+    if pc.Iter(root_dir.glob("**/*.pyi")).take(1).collect().length() > 0:
+        return pc.Ok(root_dir)
+
+    return (
+        pc.Iter(root_dir.iterdir())
+        .find(
+            lambda child: child.is_dir()
+            and pc.Iter(child.glob("**/*.pyi")).take(1).collect().length() > 0
+        )
+        .ok_or(RuntimeError(f"No .pyi stub files found in {root_dir} directory."))
+    )
 
 
 def _run_pyi_tests(

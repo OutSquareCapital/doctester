@@ -14,7 +14,7 @@ from ._console import console
 
 app = typer.Typer(
     name="doctester",
-    help="Run doctests from Python files (.py) and stub files (.pyi)",
+    help="Run doctests from stub files (.pyi) using pytest --doctest-modules",
     add_completion=False,
 )
 VerboseArg = Annotated[
@@ -27,14 +27,14 @@ VerboseArg = Annotated[
 def run(
     root_dir: Annotated[
         str,
-        typer.Argument(help="Root directory containing the package to test"),
+        typer.Argument(help="Root directory containing stub files to test"),
     ] = "src",
     *,
     verbose: VerboseArg = False,
 ) -> None:
-    """Run all doctests in a package directory.
+    """Run all doctests in stub files (.pyi).
 
-    This will discover all Python modules and stub files, then execute their doctests.
+    This will discover all .pyi stub files and execute their doctests using pytest.
     """
     console.print(
         Panel.fit(
@@ -51,14 +51,14 @@ def run(
 def file(
     file_path: Annotated[
         Path,
-        typer.Argument(help="Path to a single .py or .pyi file to test"),
+        typer.Argument(help="Path to a single .pyi stub file to test"),
     ],
     *,
     verbose: VerboseArg = False,
 ) -> None:
-    """Run doctests in a single Python file.
+    """Run doctests in a single stub file.
 
-    Supports both .py and .pyi files.
+    Only .pyi stub files are supported.
     """
     console.print(
         Panel.fit(

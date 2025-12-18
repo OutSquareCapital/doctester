@@ -3,17 +3,10 @@ from __future__ import annotations
 import re
 import subprocess
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import TYPE_CHECKING, Self
 
 if TYPE_CHECKING:
     import pyochain as pc
-
-
-class Dunders(StrEnum):
-    PY_INIT = "__init__.py"
-    STUB_INIT = "__init__.pyi"
-    PY_PATH = "__path__"
 
 
 @dataclass(slots=True, frozen=True)

@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 if TYPE_CHECKING:
@@ -46,15 +45,6 @@ def create_results_table(py_result: TestResult, pyi_result: TestResult) -> Table
     )
 
     return table
-
-
-def get_progress() -> Progress:
-    """Create a progress bar."""
-    return Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    )
 
 
 def print_test_summary(py_result: TestResult, pyi_result: TestResult) -> None:

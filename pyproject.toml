@@ -7,7 +7,7 @@
         "ruff>=0.14.9",
         "ty>=0.0.3",
         "typer>=0.20.0",
-]
+    ]
     description = "Simple tool to run doctests from Python stub files (.pyi) and regular Python files (.py)."
     name = "doctester"
     readme = "README.md"
@@ -30,6 +30,7 @@
         "FIX002",
         "PLC0415",
         "PYI021",
+        "S603",
         "S608",
         "SLF001",
         "T201",

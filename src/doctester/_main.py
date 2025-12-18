@@ -5,7 +5,7 @@ import sys
 import traceback
 from collections.abc import Callable
 from pathlib import Path
-from types import ModuleType
+from typing import Any
 
 import pyochain as pc
 
@@ -67,9 +67,8 @@ def _with_test_context[T](
 
     try:
         return operation(temp_dir)
-    except Exception:
-        tb = traceback.format_exc()
-        return pc.Err(f"An unexpected error occurred:\n{tb}")
+    except Exception:  # noqa: BLE001
+        return pc.Err(f"An unexpected error occurred:\n{traceback.format_exc()}")
     finally:
         if temp_dir.exists():
             shutil.rmtree(temp_dir)
@@ -131,9 +130,9 @@ def _run_package_tests(
 
     _console.print_info("Running .py doctests...")
 
-    def _show_founds(m: pc.Vec[ModuleType]) -> None:
+    def _show_founds(m: pc.Seq[Any]) -> None:
         if verbose:
-            _console.print_info(f"Found {m.length()} Python modules.")
+            _console.print_info(f"Found {m.length()} files.")
 
     py_result: TestResult = (
         _discovery.get_py_modules(package_name, package_path)
@@ -146,24 +145,20 @@ def _run_package_tests(
         .into(TestResult.from_seq)
     )
 
-    pyi_files: pc.Seq[Path] = (
+    _console.print_info("Running .pyi doctests...")
+    pyi_result: TestResult = (
         pc.Iter(package_path.glob("**/*.pyi"))
         .collect()
-        .tap(
-            lambda pyi: _console.print_info(f"Found {pyi.length()} Python stub files.")
-        )
-    )
-    pyi_result: TestResult = TestResult(total=0, passed=0)
-    if pyi_files.any():
-        _console.print_info("Running .pyi doctests...")
-        pyi_result = pyi_files.iter().into(
+        .tap(_show_founds)
+        .iter()
+        .into(
             lambda pyi: _run_pyi_tests(
                 pyi,
                 temp_dir,
                 verbose=verbose,
             )
         )
-
+    )
     _console.print_test_summary(py_result, pyi_result)
 
     return pc.Ok(py_result.join_with(pyi_result))

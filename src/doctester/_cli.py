@@ -5,18 +5,18 @@ from typing import Annotated
 
 import pyochain as pc
 import typer
-from rich.console import Console
 from rich.panel import Panel
 
+from doctester._models import TestResult
+
 from . import _main
+from ._console import console
 
 app = typer.Typer(
     name="doctester",
     help="Run doctests from Python files (.py) and stub files (.pyi)",
     add_completion=False,
 )
-console = Console()
-
 VerboseArg = Annotated[
     bool,
     typer.Option("--verbose", "-v", help="Enable verbose output"),
@@ -44,19 +44,7 @@ def run(
         )
     )
 
-    result = _main.run_doctester(root_dir, verbose=verbose)
-
-    match result:
-        case pc.Ok(test_result):
-            if test_result.failed > 0:
-                console.print(
-                    f"\n[bold red]✗ {test_result.failed} test(s) failed[/bold red]"
-                )
-                raise typer.Exit(code=1)
-            console.print("\n[bold green]✓ All tests passed![/bold green]")
-        case pc.Err(error):
-            console.print(f"\n[bold red]Error:[/bold red] {error}")
-            raise typer.Exit(code=1)
+    _main.run_doctester(root_dir, verbose=verbose).into(_match_res)
 
 
 @app.command()
@@ -80,8 +68,10 @@ def file(
         )
     )
 
-    result = _main.run_on_file(file_path, verbose=verbose)
+    _main.run_on_file(file_path, verbose=verbose).into(_match_res)
 
+
+def _match_res(result: pc.Result[TestResult, str]) -> None:
     match result:
         case pc.Ok(test_result):
             if test_result.failed > 0:

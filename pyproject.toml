@@ -2,14 +2,20 @@
     dependencies = [
         "loguru>=0.7.3",
         "pyochain>=0.5.52",
+        "rich>=13.9.4",
         "ruff>=0.14.9",
         "ty>=0.0.3",
+        "typer>=0.15.1",
     ]
     description = "Simple tool to run doctests from Python stub files (.pyi) and regular Python files (.py)."
     name = "doctester"
     readme = "README.md"
     requires-python = ">=3.12"
     version = "0.1.3"
+
+    [project.scripts]
+        doctester = "doctester._cli:app"
+
 [build-system]
     build-backend = "uv_build"
     requires      = ["uv_build>=0.8.15,<0.9.0"]

@@ -26,3 +26,13 @@ class Foo:
         >>> ```, "this", "is", "bad"):
         ...
         """
+
+def failing_test() -> None:
+    """Test qui va échouer.
+
+    Example:
+    ```python
+    >>> 1 + 1 # Expected to fail.
+    3
+    ```
+    """

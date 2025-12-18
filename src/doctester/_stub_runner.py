@@ -1,77 +1,95 @@
+from __future__ import annotations
+
 import importlib.util
 import inspect
 import sys
+from importlib.machinery import ModuleSpec
 from pathlib import Path
 from types import ModuleType
+from typing import NamedTuple
 
 import pyochain as pc
 
+from . import _console
 from ._models import TestResult
 from ._stub_parser import generate_test_module_content
 
 
-def _run_tests_in_module(module: ModuleType) -> TestResult:
-    passed, total = 0, 0
-    for name, func in inspect.getmembers(module, inspect.isfunction):
-        if name.startswith("test_"):
-            total += 1
-            if func():
-                passed += 1
-    return TestResult(total=total, passed=passed)
+def process_pyi_file(
+    pyi_file: Path, temp_dir: Path, *, verbose: bool
+) -> pc.Option[TestResult]:
+    """Process a single .pyi file and return test results if any."""
+    module_content = generate_test_module_content(pyi_file)
+    if module_content.is_none():
+        return pc.NONE
+
+    test_file = temp_dir.joinpath(f"{pyi_file.stem}_test.py")
+    test_file.write_text(module_content.unwrap(), encoding="utf-8")
+
+    if verbose:
+        _console.print_info(f"Running stub tests for {pyi_file.name}...")
+
+    def _logs(result: TestResult) -> None:
+        if verbose:
+            _console.print_info(f"  {result.passed}/{result.total} tests passed.")
+
+        if result.failed > 0:
+            _console.print_error(f"  FAILURES in {pyi_file.name} (see log above)")
+
+    def _on_err(e: ImportError) -> None:
+        _console.print_error(f"--- ERROR loading {test_file.name} ---")
+        _console.print_error(f"{e!r}")
+
+    return pc.Some(
+        ModuleLoader.from_file(test_file)
+        .map(load)
+        .map(_run_tests_in_module)
+        .inspect(_logs)
+        .map_err(_on_err)
+        .ok()
+        .unwrap_or(TestResult(total=1, passed=0))
+    )
 
 
-def _load_module_from_file(test_file: Path) -> ModuleType:
-    module_name = test_file.stem
-    spec = importlib.util.spec_from_file_location(module_name, test_file)
-    if not (spec and spec.loader):
-        msg = f"Could not create module spec for {test_file}"
-        raise ImportError(msg)
+class ModuleLoader(NamedTuple):
+    spec: ModuleSpec
+    loader: importlib.abc.Loader
 
-    test_module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = test_module
-    spec.loader.exec_module(test_module)
+    @staticmethod
+    def from_file(test_file: Path) -> pc.Result[ModuleLoader, ImportError]:
+        def _on_err() -> ImportError:
+            msg = f"Could not create module spec for {test_file}"
+            return ImportError(msg)
+
+        def _get_loader(spec: ModuleSpec) -> pc.Option[importlib.abc.Loader]:
+            return pc.Option.from_(spec.loader)
+
+        spec = pc.Option.from_(
+            importlib.util.spec_from_file_location(test_file.stem, test_file)
+        ).ok_or_else(_on_err)
+        loader = spec.ok().and_then(_get_loader)
+        if spec.is_ok and loader.is_some():
+            return pc.Ok(ModuleLoader(spec.unwrap(), loader.unwrap()))
+        return pc.Err(spec.unwrap_err())
+
+
+def load(loader: ModuleLoader) -> ModuleType:
+    test_module = importlib.util.module_from_spec(loader.spec)
+    sys.modules[loader.spec.name] = test_module
+    loader.loader.exec_module(test_module)
     return test_module
 
 
-def run_pyi_tests(
-    pyi_files: list[Path],
-    temp_dir: Path,
-    *,
-    verbose: bool,
-) -> TestResult:
-    all_results = pc.Vec[TestResult].new()
-
-    for pyi_file in pyi_files:
-        module_content = generate_test_module_content(pyi_file)
-        if not module_content.is_some():
-            continue
-
-        test_file = temp_dir.joinpath(f"{pyi_file.stem}_test.py")
-        test_file.write_text(module_content.unwrap(), encoding="utf-8")
-
-        if verbose:
-            print(f"Running stub tests for {pyi_file.name}...")
-
-        try:
-            result = _run_tests_in_module(_load_module_from_file(test_file))
-
-            if verbose:
-                print(f"  {result.passed}/{result.total} tests passed.")
-
-            if result.failed > 0:
-                print(f"  FAILURES in {pyi_file.name} (see log above)")
-
-            all_results.append(result)
-
-        except Exception as e:
-            print(f"--- ERROR loading {test_file.name} ---")
-            print(f"{e!r}")
-            all_results.append(TestResult(total=1, passed=0))
-
-    def _all_to_res(all_results: pc.Vec[TestResult]) -> TestResult:
-        return TestResult(
-            all_results.iter().map(lambda r: r.total).sum(),
-            all_results.iter().map(lambda r: r.passed).sum(),
+def _run_tests_in_module(module: ModuleType) -> TestResult:
+    return (
+        pc.Iter(inspect.getmembers(module, inspect.isfunction))
+        .filter(lambda item: item[0].startswith("test_"))
+        .map(lambda item: item[1])
+        .collect()
+        .into(
+            lambda x: TestResult(
+                total=x.length(),
+                passed=x.iter().filter(lambda fn: fn()).length(),
+            )
         )
-
-    return all_results.into(_all_to_res)
+    )

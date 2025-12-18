@@ -10,6 +10,9 @@ from ._models import Dunders
 
 
 def find_package_name(root_dir: Path) -> pc.Result[str, RuntimeError]:
+    if root_dir.joinpath(Dunders.PY_INIT).exists():
+        return pc.Ok(root_dir.name)
+
     return (
         pc.Iter(root_dir.iterdir())
         .find(
@@ -24,7 +27,9 @@ def find_package_name(root_dir: Path) -> pc.Result[str, RuntimeError]:
     )
 
 
-def get_py_modules(package_name: str, package_path: Path) -> pc.Vec[ModuleType]:
+def get_py_modules(
+    package_name: str, package_path: Path
+) -> pc.Result[pc.Vec[ModuleType], RuntimeError]:
     modules = pc.Vec[ModuleType].new()
 
     try:
@@ -34,19 +39,17 @@ def get_py_modules(package_name: str, package_path: Path) -> pc.Vec[ModuleType]:
             f"Could not import package '{package_name}'. "
             f"Is '{package_path.parent}' in PYTHONPATH?"
         )
-        raise RuntimeError(msg)
+        return pc.Err(RuntimeError(msg))
 
     if not hasattr(pkg, Dunders.PY_PATH):
         msg = (
             f"Package '{package_name}' has no {Dunders.PY_PATH}. "
             "Is it correctly installed or in PYTHONPATH?"
         )
-        raise RuntimeError(
-            msg,
-        )
+        return pc.Err(RuntimeError(msg))
 
     for _, modname, ispkg in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."):
         if not ispkg:
             with contextlib.suppress(Exception):
                 modules.append(importlib.import_module(modname))
-    return modules
+    return pc.Ok(modules)

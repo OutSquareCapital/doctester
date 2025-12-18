@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Self
+
+import pyochain as pc
 
 
 class Dunders(StrEnum):
@@ -14,17 +18,17 @@ class TestResult:
     total: int
     passed: int
 
+    @classmethod
+    def from_seq(cls, results: pc.Seq[TestResult]) -> Self:
+        """Aggregate multiple test results into one."""
+        return cls(
+            total=results.iter().map(lambda r: r.total).sum(),
+            passed=results.iter().map(lambda r: r.passed).sum(),
+        )
+
     @property
     def failed(self) -> int:
         return self.total - self.passed
-
-    def show(self) -> Self:
-        """Display the test result summary."""
-        if self.total > 0:
-            print(f"Tests Result: {self.passed}/{self.total} passed.")
-        else:
-            print("No tests found.")
-        return self
 
     def join_with(self, other: Self) -> Self:
         return self.__class__(

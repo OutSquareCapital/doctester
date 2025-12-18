@@ -1,8 +1,7 @@
 from typing import Any
 
 def function_with_bad_docstring() -> None:
-    """
-    This has a markdown fence that breaks the parser.
+    """This has a markdown fence that breaks the parser.
 
     Example:
     ```python
@@ -12,12 +11,10 @@ def function_with_bad_docstring() -> None:
     ...
     ```
     """
-    ...
 
 class Foo:
     def __init__(self, data: Any) -> None:
-        """
-        Initializes the context with Python data.
+        """Initializes the context with Python data.
 
         Args:
             data: The Python data (e.g., dict, list) to query.
@@ -29,4 +26,3 @@ class Foo:
         >>> ```, "this", "is", "bad"):
         ...
         """
-        ...

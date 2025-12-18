@@ -24,11 +24,8 @@ uv add git+https://github.com/OutSquareCapital/stubtester.git
 
 ```bash
 # Run on all stubs in a directory
-uv run stubtester run path/to/your/package
+uv run stubtester path/to/your/package
 
 # Run on a single stub file
-uv run stubtester file path/to/file.pyi
-
-# Verbose mode
-uv run stubtester run src -v
+uv run stubtester path/to/file.pyi
 ```

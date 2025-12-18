@@ -1,13 +1,10 @@
 [project]
     dependencies = [
-        "loguru>=0.7.3",
         "pyochain>=0.5.52",
         "pytest>=9.0.2",
         "rich>=14.2.0",
-        "ruff>=0.14.9",
-        "ty>=0.0.3",
         "typer>=0.20.0",
-    ]
+]
     description = "Simple tool to run doctests from Python stub files (.pyi) and regular Python files (.py)."
     name = "stubtester"
     readme = "README.md"
@@ -43,5 +40,11 @@
     lint.select = ["ALL"]
     [tool.ruff.format]
         docstring-code-format = true
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.9",
+    "ty>=0.0.3",
+]
     [tool.ruff.lint.pydocstyle]
         convention = "google"

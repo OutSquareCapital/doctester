@@ -7,10 +7,9 @@ import pyochain as pc
 import typer
 from rich.panel import Panel
 
-from doctester._models import TestResult
-
 from . import _main
 from ._console import console
+from ._models import TestResult
 
 app = typer.Typer(
     name="doctester",

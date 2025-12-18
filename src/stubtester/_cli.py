@@ -3,12 +3,10 @@
 from pathlib import Path
 from typing import Annotated
 
-import pyochain as pc
 import typer
 from rich.panel import Panel
 
 from ._main import console, run_doctester, run_on_file
-from ._models import TestResult
 
 app = typer.Typer(
     name="doctester",
@@ -42,7 +40,9 @@ def run(
         )
     )
 
-    run_doctester(root_dir, verbose=verbose).into(_match_res)
+    exit_code = run_doctester(root_dir, verbose=verbose)
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
 
 
 @app.command()
@@ -66,21 +66,9 @@ def file(
         )
     )
 
-    run_on_file(file_path, verbose=verbose).into(_match_res)
-
-
-def _match_res(result: pc.Result[TestResult, str]) -> None:
-    match result:
-        case pc.Ok(test_result):
-            if test_result.failed > 0:
-                console.print(
-                    f"\n[bold red]✗ {test_result.failed} test(s) failed[/bold red]"
-                )
-                raise typer.Exit(code=1)
-            console.print("\n[bold green]✓ All tests passed![/bold green]")
-        case pc.Err(error):
-            console.print(f"\n[bold red]Error:[/bold red] {error}")
-            raise typer.Exit(code=1)
+    exit_code = run_on_file(file_path, verbose=verbose)
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
 
 
 if __name__ == "__main__":

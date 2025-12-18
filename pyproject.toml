@@ -5,7 +5,7 @@
         "rich>=14.2.0",
         "typer>=0.20.0",
     ]
-    description = "Simple tool to run doctests from Python stub files (.pyi) and regular Python files (.py)."
+    description = "Simple tool to run doctests from Python stub files (.pyi)."
     name = "stubtester"
     readme = "README.md"
     requires-python = ">=3.12"
@@ -16,7 +16,7 @@
 
 [build-system]
     build-backend = "uv_build"
-    requires      = ["uv_build>=0.8.15,<0.9.0"]
+    requires      = ["uv_build>=0.9.18"]
 [tool.ruff]
     lint.ignore = [
         "C417",

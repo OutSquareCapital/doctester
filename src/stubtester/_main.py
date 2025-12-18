@@ -16,9 +16,10 @@ BLOCK_PATTERN = re.compile(
     r':\s*"""(.*?)"""',
     re.DOTALL,
 )
+PY_CODE = re.compile(r"^\s*```\w*\s*$", flags=re.MULTILINE)
 
 
-def run_tests(path: Path) -> pc.Result[int, str]:
+def run_tests(path: Path) -> pc.Result[None, str]:
     if not path.exists():
         return pc.Err(f"[bold red]Error:[/bold red] Path '{path}' not found.")
 
@@ -111,7 +112,7 @@ class TestBlock(NamedTuple):
     docstring: str
 
     def to_func(self) -> str:
-        cleaned = re.sub(r"^\s*```\w*\s*$", "", self.docstring, flags=re.MULTILINE)
+        cleaned = re.sub(PY_CODE, "", self.docstring)
 
         return f'''
 def test_{self.name}():

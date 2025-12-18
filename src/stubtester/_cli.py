@@ -26,6 +26,10 @@ def run(path: PathArg) -> None:
     """Run all doctests in stub files (.pyi).
 
     This will discover all .pyi stub files and execute their doctests using pytest.
+
+    Args:
+        path (Path): Path to a file or directory containing stub files to test.
+
     """
     console.print(
         Panel.fit(
@@ -36,13 +40,12 @@ def run(path: PathArg) -> None:
     )
 
     def _handle_err(msg: str) -> None:
-        console.print(msg)
-        raise typer.Exit(1)
+        console.print(f"[bold red]✗ Error:[/bold red] {msg}")
 
-    run_tests(path).map_or_else(
-        ok=lambda _: console.print("[bold green]✓ All tests passed![/bold green]"),
-        err=_handle_err,
-    )
+    def _handle_ok(_: None) -> None:
+        console.print("[bold green]✓ All tests passed![/bold green]")
+
+    return run_tests(path).map_or_else(_handle_ok, _handle_err)
 
 
 if __name__ == "__main__":

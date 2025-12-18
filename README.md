@@ -10,9 +10,8 @@ Otherwise, you should always write your doctests in the actual `.py` implementat
 
 1. **Extracts** doctests from your `.pyi` stub files
 2. **Generates** temporary `.py` test files
-3. **Type checks** them with `ty`
-4. **Runs** `pytest --doctest-modules` on them
-5. **Cleans up** after itself
+3. **Runs** `pytest --doctest-modules` on them
+4. **Cleans up** after itself
 
 ## 📦 Installation
 
@@ -22,10 +21,22 @@ uv add git+https://github.com/OutSquareCapital/stubtester.git
 
 ## 🚀 Usage
 
+with the CLI:
+
 ```bash
 # Run on all stubs in a directory
 uv run stubtester path/to/your/package
 
 # Run on a single stub file
 uv run stubtester path/to/file.pyi
+```
+
+or programmatically:
+
+```python
+from pathlib import Path
+
+import stubtester
+
+stubtester.run(Path("my_package"))
 ```

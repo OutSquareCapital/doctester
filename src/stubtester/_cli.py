@@ -38,14 +38,10 @@ def run(path: PathArg) -> None:
             border_style="cyan",
         )
     )
-
-    def _handle_err(msg: str) -> None:
-        console.print(f"[bold red]✗ Error:[/bold red] {msg}")
-
-    def _handle_ok(_: None) -> None:
-        console.print("[bold green]✓ All tests passed![/bold green]")
-
-    return run_tests(path).map_or_else(_handle_ok, _handle_err)
+    return run_tests(path).map_or_else(
+        lambda _: console.print("[bold green]✓ All tests passed![/bold green]"),
+        lambda msg: console.print(f"[bold red]✗ Error:[/bold red] {msg}"),
+    )
 
 
 if __name__ == "__main__":

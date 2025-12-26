@@ -27,6 +27,7 @@
         "FIX002",
         "PLC0415",
         "PYI021",
+        "S101",
         "S603",
         "S608",
         "SLF001",
@@ -42,6 +43,6 @@
         docstring-code-format = true
 
 [dependency-groups]
-    dev = ["ruff>=0.14.9", "ty>=0.0.3"]
+    dev = ["ruff>=0.14.9"]
     [tool.ruff.lint.pydocstyle]
         convention = "google"

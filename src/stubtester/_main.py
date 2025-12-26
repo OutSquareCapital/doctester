@@ -35,7 +35,7 @@ def run_tests(path: Path) -> pc.Result[None, str]:
             res = (
                 pc.Iter(BLOCK_PATTERN.findall(file.read_text(encoding="utf-8")))
                 .map(lambda b: TestBlock(*b).to_func())
-                .filter(str.strip)
+                .filter(lambda s: s.strip() != "")
                 .join("\n")
             )
             if not res:
@@ -51,7 +51,7 @@ def run_tests(path: Path) -> pc.Result[None, str]:
 
     def _get_pyi_files() -> pc.Iter[Path]:
         if path.is_file():
-            return pc.Iter.from_(path) if path.suffix == ".pyi" else pc.Iter(())
+            return pc.Iter([path]) if path.suffix == ".pyi" else pc.Iter(())
         return pc.Iter(path.glob("**/*.pyi"))
 
     return (
@@ -70,7 +70,7 @@ def run_tests(path: Path) -> pc.Result[None, str]:
                 )
             ).run()
         )
-        .tap(lambda _: _clean_up())
+        .inspect(lambda _: _clean_up())
     )
 
 
@@ -98,13 +98,13 @@ class Step(NamedTuple):
 
     args: Sequence[str]
 
-    def run(self) -> pc.Result[int, str]:
+    def run(self) -> pc.Result[None, str]:
         exit_code = subprocess.run(self.args, check=False).returncode
         if exit_code != 0:
             return pc.Err(
                 f"[bold red]✗ Tests failed[/bold red] with exit code {exit_code}"
-            )  # ty:ignore[invalid-return-type] # ty doesn't seem to handle this well
-        return pc.Ok(exit_code)
+            )
+        return pc.Ok(None)
 
 
 class TestBlock(NamedTuple):

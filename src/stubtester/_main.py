@@ -18,6 +18,7 @@ app = typer.Typer(
     name="doctester",
     help="Run doctests from stub files (.pyi) using pytest --doctest-modules",
 )
+TEMP_DIR = Path("doctests_temp")
 
 
 @app.command()
@@ -80,19 +81,17 @@ def _temp_test_dir() -> Generator[pc.Result[Path, str], None, None]:
     def _print_info(message: str) -> None:
         console.print(f"[cyan]i[/cyan] {message}")
 
-    temp_dir = Path("doctests_temp")
-
     try:
-        if temp_dir.exists():
-            shutil.rmtree(temp_dir)
-        temp_dir.mkdir()
-        _print_info(f"Using temp directory: {temp_dir.absolute()}")
-        yield pc.Ok(temp_dir)
+        if TEMP_DIR.exists():
+            shutil.rmtree(TEMP_DIR)
+        TEMP_DIR.mkdir()
+        _print_info(f"Using temp directory: {TEMP_DIR.absolute()}")
+        yield pc.Ok(TEMP_DIR)
     except (OSError, PermissionError) as e:
         yield pc.Err(f"Failed to create temp directory: {e}")
     finally:
-        if temp_dir.exists():
-            shutil.rmtree(temp_dir)
+        if TEMP_DIR.exists():
+            shutil.rmtree(TEMP_DIR)
             _print_info("Cleaned up temp directory.")
 
 
@@ -152,7 +151,6 @@ def _run_tests(temp_dir: Path) -> int:
             temp_dir.as_posix(),
             "--doctest-modules",
             "-v",
-            "--tb=short",
         ),
         check=False,
     ).returncode

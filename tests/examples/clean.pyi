@@ -19,7 +19,7 @@ def multiply(x: int, y: int) -> int:
     >>> 3 * 4
     12
     >>> 0 * 100
-    0gr
+    0
     ```
     """
 

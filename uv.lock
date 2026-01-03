@@ -229,7 +229,7 @@ wheels = [
 
 [[package]]
 name = "pyochain"
-version = "0.6.1.2"
+version = "0.6.1.51"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -238,9 +238,9 @@ dependencies = [
     { name = "cytoolz", marker = "python_full_version >= '3.13'" },
     { name = "more-itertools", marker = "python_full_version >= '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2e/96/672fc838701c794455841d674afb91385a2d025bccef805c92b8f65367c6/pyochain-0.6.1.2.tar.gz", hash = "sha256:cabeb846d1dcde0d839e943b9fae5b9049721f5b6e1f17fa80cced5ed2894b99", size = 41341, upload-time = "2025-12-26T15:31:11.07Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a2/86/636cd1f5f8dd30ae07a087f01de6ab518f496a50f01284604e5dee062863/pyochain-0.6.1.51.tar.gz", hash = "sha256:c4e25b6753bbebfcafd73f4be06b289f9ee2f535cdb42bb210959724baad7f7d", size = 43500, upload-time = "2026-01-02T16:18:17.344Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1c/3f/237db545cb6d6168da8b3aa73d3511db42d8ca7a5224ab1bd0907e0f52cf/pyochain-0.6.1.2-py3-none-any.whl", hash = "sha256:95b8efccf62fa5dee45b6fccccee3ae34bee45d60c604252c7a698388a3d0536", size = 48341, upload-time = "2025-12-26T15:31:09.95Z" },
+    { url = "https://files.pythonhosted.org/packages/bd/ca/a3ed77b7bf91d081845c626b245ffd13d80d28a87f434c3a4d6b358565fd/pyochain-0.6.1.51-py3-none-any.whl", hash = "sha256:e0f3d3a12695b47ca7962e47b411241aa98c85740a42336c18fb3088be8d2b2b", size = 47370, upload-time = "2026-01-02T16:18:18.31Z" },
 ]
 
 [[package]]
@@ -317,11 +317,11 @@ wheels = [
 
 [[package]]
 name = "stubtester"
-version = "0.1.4"
+version = "0.1.5"
 source = { editable = "." }
 dependencies = [
     { name = "pyochain", version = "0.5.52", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
-    { name = "pyochain", version = "0.6.1.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
+    { name = "pyochain", version = "0.6.1.51", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "pytest" },
     { name = "rich" },
     { name = "typer" },

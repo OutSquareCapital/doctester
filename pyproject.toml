@@ -9,10 +9,10 @@
     name = "stubtester"
     readme = "README.md"
     requires-python = ">=3.12"
-    version = "0.1.4"
+    version = "0.1.5"
 
     [project.scripts]
-        stubtester = "stubtester._cli:app"
+        stubtester = "stubtester.__main__:app"
 
 [build-system]
     build-backend = "uv_build"

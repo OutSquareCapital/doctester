@@ -1,5 +1,5 @@
 """Stubtester - Run doctests from stub files (.pyi) using pytest."""
 
-from ._cli import run
+from ._main import app, run
 
-__all__ = ["run"]
+__all__ = ["app", "run"]

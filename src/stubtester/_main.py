@@ -1,121 +1,194 @@
 import re
 import shutil
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Generator
+from contextlib import contextmanager
 from pathlib import Path
-from typing import NamedTuple
+from typing import Annotated, NamedTuple
 
 import pyochain as pc
+import typer
 from rich.console import Console
+from rich.panel import Panel
 
 console = Console()
 
 
-BLOCK_PATTERN = re.compile(
-    r"(?:def|class)\s+(\w+)(?:\[[^\]]*\])?\s*(?:\([^)]*\))?\s*(?:->[^:]+)?"
-    r':\s*"""(.*?)"""',
-    re.DOTALL,
+app = typer.Typer(
+    name="doctester",
+    help="Run doctests from stub files (.pyi) using pytest --doctest-modules",
 )
-PY_CODE = re.compile(r"^\s*```\w*\s*$", flags=re.MULTILINE)
 
 
-def run_tests(path: Path) -> pc.Result[None, str]:
-    if not path.exists():
-        return pc.Err(f"[bold red]Error:[/bold red] Path '{path}' not found.")
+@app.command()
+def run(
+    path: Annotated[
+        Path,
+        typer.Argument(
+            help="Path to a file or directory containing stub files to test",
+            parser=Path,
+        ),
+    ],
+) -> pc.Result[str, str]:
+    """Run all doctests in stub files (.pyi).
 
-    temp_dir = _get_temp_dir()
+    This will discover all .pyi stub files and execute their doctests using pytest.
 
-    def _clean_up() -> None:
-        shutil.rmtree(temp_dir)
-        _print_info("Cleaned up temp directory.")
+    Args:
+        path (Path): Path to a file or directory containing stub files to test.
 
-    def _generate_test_file(file: Path) -> pc.Option[Path]:
-        def _generate_test_module_content() -> pc.Option[str]:
-            header = f"# Generated tests from {file.name}\n\n"
-            res = (
-                pc.Iter(BLOCK_PATTERN.findall(file.read_text(encoding="utf-8")))
-                .map(lambda b: TestBlock(*b).to_func())
-                .filter(lambda s: s.strip() != "")
-                .join("\n")
-            )
-            if not res:
-                return pc.NONE
-            return pc.Some(header + res)
+    Returns:
+        pc.Result[str, str]: Ok with success message, or Err with error message.
 
-        test_file = temp_dir.joinpath(f"{file.stem}_test.py")
+    """
+    _header(path)
+    with _temp_test_dir() as temp_dir_result:
         return (
-            _generate_test_module_content()
-            .map(lambda content: test_file.write_text(content, encoding="utf-8"))
-            .map(lambda _: test_file)
-        )
-
-    def _get_pyi_files() -> pc.Iter[Path]:
-        if path.is_file():
-            return pc.Iter([path]) if path.suffix == ".pyi" else pc.Iter(())
-        return pc.Iter(path.glob("**/*.pyi"))
-
-    return (
-        _get_pyi_files()
-        .filter_map(_generate_test_file)
-        .collect()
-        .into(_generated_or)
-        .and_then(
-            lambda _: Step(
-                (
-                    "pytest",
-                    str(temp_dir),
-                    "--doctest-modules",
-                    "-v",
-                    "--tb=short",
+            temp_dir_result.and_then(
+                lambda temp_dir: _path_exists(path).and_then(
+                    lambda path: _get_pyi_files(path)
+                    .filter_map(lambda file: _generate_test_file(file, temp_dir))
+                    .collect()
+                    .into(_check_generation)
+                    .map(lambda _: _run_tests(temp_dir))
+                    .and_then(_check_status)
                 )
-            ).run()
+            )
+            .inspect(console.print)
+            .inspect_err(console.print)
         )
-        .inspect(lambda _: _clean_up())
+
+
+def _header(path: Path) -> None:
+    return console.print(
+        Panel.fit(
+            f"[bold cyan]Doctester[/bold cyan]\n"
+            f"Running tests in: [yellow]{path}[/yellow]",
+            border_style="cyan",
+        )
     )
 
 
-def _print_info(message: str) -> None:
-    console.print(f"[cyan]i[/cyan] {message}")
+def _path_exists(path: Path) -> pc.Result[Path, str]:
+    if path.exists():
+        return pc.Ok(path)
+    return pc.Err(f"[bold red]✗ Error:[/bold red] Path '{path}' not found.")
 
 
-def _get_temp_dir() -> Path:
+@contextmanager
+def _temp_test_dir() -> Generator[pc.Result[Path, str], None, None]:
+    def _print_info(message: str) -> None:
+        console.print(f"[cyan]i[/cyan] {message}")
+
     temp_dir = Path("doctests_temp")
-    if temp_dir.exists():
-        shutil.rmtree(temp_dir)
-    temp_dir.mkdir()
-    _print_info(f"Using temp directory: {temp_dir.absolute()}")
-    return temp_dir
+
+    try:
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+        temp_dir.mkdir()
+        _print_info(f"Using temp directory: {temp_dir.absolute()}")
+        yield pc.Ok(temp_dir)
+    except (OSError, PermissionError) as e:
+        yield pc.Err(f"Failed to create temp directory: {e}")
+    finally:
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+            _print_info("Cleaned up temp directory.")
 
 
-def _generated_or(files: pc.Seq[Path]) -> pc.Result[None, str]:
+def _generate_test_file(file: Path, temp_dir: Path) -> pc.Option[Path]:
+    test_file = temp_dir.joinpath(f"{file.stem}_test.py")
+    return (
+        _generate_test_module_content(file)
+        .map(lambda content: test_file.write_text(content, encoding="utf-8"))
+        .map(lambda _: test_file)
+    )
+
+
+def _generate_test_module_content(file: Path) -> pc.Option[str]:
+    res = _get_blocks(file)
+    if not res:
+        return pc.NONE
+    return pc.Some(f"# Generated tests from {file.name}\n\n" + res)
+
+
+def _get_blocks(file: Path) -> str:
+    return (
+        pc.Iter(Patterns.BLOCK.findall(file.read_text(encoding="utf-8")))
+        .map(lambda b: BlockTest(*b).to_func())
+        .filter(lambda s: s.strip() != "")
+        .join("\n")
+    )
+
+
+def _get_pyi_files(path: Path) -> pc.Iter[Path]:
+    match path.is_file():
+        case True:
+            match path.suffix:
+                case ".pyi":
+                    return pc.Iter.once(path)
+                case _:
+                    return pc.Iter[Path].empty()
+        case _:
+            return pc.Iter(path.glob("**/*.pyi"))
+
+
+def _check_generation(files: pc.Seq[Path]) -> pc.Result[None, str]:
     if files.length() == 0:
         return pc.Err("[yellow]Warning:[/yellow] No doctests found in stub files.")
     return pc.Ok(None)
 
 
-class Step(NamedTuple):
-    """A command-line step to execute."""
-
-    args: Sequence[str]
-
-    def run(self) -> pc.Result[None, str]:
-        exit_code = subprocess.run(self.args, check=False).returncode
-        if exit_code != 0:
-            return pc.Err(
-                f"[bold red]✗ Tests failed[/bold red] with exit code {exit_code}"
-            )
-        return pc.Ok(None)
+def _check_status(exit_code: int) -> pc.Result[str, str]:
+    if exit_code != 0:
+        return pc.Err(f"[bold red]✗ Tests failed[/bold red] with exit code {exit_code}")
+    return pc.Ok("[bold green]✓ All tests passed![/bold green]")
 
 
-class TestBlock(NamedTuple):
+def _run_tests(temp_dir: Path) -> int:
+    return subprocess.run(
+        args=(
+            "pytest",
+            temp_dir.as_posix(),
+            "--doctest-modules",
+            "-v",
+            "--tb=short",
+        ),
+        check=False,
+    ).returncode
+
+
+class Patterns:
+    """Regex patterns for parsing stub files."""
+
+    BLOCK = re.compile(
+        r"(?:def|class)\s+(\w+)(?:\[[^\]]*\])?\s*(?:\([^)]*\))?\s*(?:->[^:]+)?"
+        r':\s*"""(.*?)"""',
+        re.DOTALL,
+    )
+    PY_CODE = re.compile(r"^\s*```\w*\s*$", flags=re.MULTILINE)
+
+    @classmethod
+    def clean(cls, docstring: str) -> str:
+        return re.sub(cls.PY_CODE, "", docstring)
+
+
+class BlockTest(NamedTuple):
+    """Represents a testable block extracted from a stub file."""
+
     name: str
+    """The name of the function or class."""
     docstring: str
+    """The docstring associated with the function or class."""
 
     def to_func(self) -> str:
-        cleaned = re.sub(PY_CODE, "", self.docstring)
-
+        """Convert the block into a test function string."""
         return f'''
 def test_{self.name}():
-    """{cleaned}"""
+    """{Patterns.clean(self.docstring)}"""
     pass
 '''
+
+
+if __name__ == "__main__":
+    app()

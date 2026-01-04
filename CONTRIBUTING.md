@@ -10,9 +10,9 @@ This project uses `pytest` for testing. The test suite covers unit tests and int
 
 ```bash
 # Run all tests with pytest
-uv run pytest tests/
+uv run pytest tests/main.py
 # Run stubtester on his own tests
-uv run stubtester tests/
+uv run stubtester tests/clean.pyi
 ```
 
 ## 📝 Code Style

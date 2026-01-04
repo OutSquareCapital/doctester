@@ -4,34 +4,16 @@ import subprocess
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Annotated, NamedTuple, Self
+from typing import Annotated
 
 import pyochain as pc
 import typer
 from rich.console import Console
 from rich.panel import Panel
 
+from ._blocks import BlockTest, MarkdownBlock, Patterns
+
 console = Console()
-
-
-class Patterns:
-    """Regex patterns for parsing stub files."""
-
-    BLOCK = re.compile(
-        r"(?:def|class)\s+(\w+)(?:\[[^\]]*\])?\s*(?:\([^)]*\))?\s*(?:->[^:]+)?"
-        r':\s*[rRbBfFuU]*"""(.*?)"""',
-        re.DOTALL,
-    )
-    PY_CODE = re.compile(r"^\s*```\w*\s*$", flags=re.MULTILINE)
-    LINE_DIRECTIVE = re.compile(r'#\s*line\s+(\d+)\s+"([^"]+)"')
-    TEST_FILE = re.compile(
-        r"(?:[^\s/\\]*[/\\])*doctests_temp[/\\]([^/\\:]+)(?::(\d+)|::[\w.]+)",
-    )
-    TEST_NAME = re.compile(r"::([^:\s]+)")
-
-    @classmethod
-    def clean(cls, docstring: str) -> str:
-        return re.sub(cls.PY_CODE, "", docstring)
 
 
 app = typer.Typer(
@@ -72,20 +54,7 @@ def run(
     """
     _header(path)
     with _temp_test_dir(keep=keep) as temp_dir_result:
-        return (
-            temp_dir_result.and_then(
-                lambda temp_dir: _path_exists(path).and_then(
-                    lambda path: _get_pyi_files(path)
-                    .filter_map(lambda file: _generate_test_file(file, temp_dir))
-                    .collect()
-                    .into(_check_generation)
-                    .map(lambda _: _run_tests(temp_dir))
-                    .and_then(_check_status)
-                )
-            )
-            .inspect(console.print)
-            .inspect_err(console.print)
-        )
+        return temp_dir_result.and_then(lambda temp_dir: _execute_tests(temp_dir, path))
 
 
 def _header(path: Path) -> None:
@@ -96,12 +65,6 @@ def _header(path: Path) -> None:
             border_style="cyan",
         )
     )
-
-
-def _path_exists(path: Path) -> pc.Result[Path, str]:
-    if path.exists():
-        return pc.Ok(path)
-    return pc.Err(f"[bold red]✗ Error:[/bold red] Path '{path}' not found.")
 
 
 @contextmanager
@@ -129,6 +92,37 @@ def _temp_test_dir(
             )
 
 
+def _execute_tests(temp_dir: Path, test_file: Path) -> pc.Result[str, str]:
+    return _path_exists(test_file).and_then(
+        lambda path: _get_pyi_files(path)
+        .filter_map(lambda file: _generate_test_file(file, temp_dir))
+        .collect()
+        .into(_check_generation)
+        .map(lambda _: _run_tests(temp_dir))
+        .and_then(_check_status)
+        .inspect(console.print)
+        .inspect_err(console.print)
+    )
+
+
+def _path_exists(path: Path) -> pc.Result[Path, str]:
+    if path.exists():
+        return pc.Ok(path)
+    return pc.Err(f"[bold red]✗ Error:[/bold red] Path '{path}' not found.")
+
+
+def _get_pyi_files(path: Path) -> pc.Iter[Path]:
+    match path.is_file():
+        case True:
+            match path.suffix:
+                case ".pyi" | ".md":
+                    return pc.Iter.once(path)
+                case _:
+                    return pc.Iter[Path].empty()
+        case _:
+            return pc.Iter(path.rglob("*.pyi")).chain(pc.Iter(path.rglob("*.md")))
+
+
 def _generate_test_file(file: Path, temp_dir: Path) -> pc.Option[Path]:
     test_file = temp_dir.joinpath(f"{file.stem}_test.py")
     return (
@@ -147,24 +141,52 @@ def _generate_test_module_content(file: Path) -> pc.Option[str]:
 
 def _get_blocks(file: Path) -> str:
     content = file.read_text(encoding="utf-8")
+    match file.suffix:
+        case ".md":
+            return _parse_markdown(content, file.name)
+        case ".pyi":
+            return _parse_stub(content, file.name)
+        case _:
+            return ""
+
+
+def _parse_stub(content: str, filename: str) -> str:
     return (
         pc.Iter(Patterns.BLOCK.finditer(content))
-        .map(lambda match: BlockTest.from_match(match, content, file.name).to_func())
+        .map(lambda match: BlockTest.from_match(match, content, filename).to_func())
         .filter(lambda s: s.strip() != "")
         .join("\n")
     )
 
 
-def _get_pyi_files(path: Path) -> pc.Iter[Path]:
-    match path.is_file():
-        case True:
-            match path.suffix:
-                case ".pyi":
-                    return pc.Iter.once(path)
-                case _:
-                    return pc.Iter[Path].empty()
-        case _:
-            return pc.Iter(path.glob("**/*.pyi"))
+def _parse_markdown(content: str, filename: str) -> str:
+    """Parse markdown file and extract code blocks."""
+    headers = pc.Iter(Patterns.MARKDOWN_HEADER.finditer(content)).collect()
+
+    def _find_header_for_block(block_start: int) -> str:
+        """Find the closest header before this block."""
+        last_header = (
+            headers.iter()
+            .filter(lambda h: h.start() < block_start)
+            .map(lambda h: h.group(2).strip())
+            .last()
+        )
+        return last_header if last_header else "markdown_test"
+
+    return (
+        pc.Iter(Patterns.MARKDOWN_BLOCK.finditer(content))
+        .enumerate()
+        .filter(lambda item: item.value.group(1) in {"py", "python"})
+        .map(
+            lambda item: MarkdownBlock(
+                title=f"{_find_header_for_block(item.value.start())}_{item.idx}",
+                code=item.value.group(2),
+                line_number=content[: item.value.start()].count("\n") + 1,
+                source_file=filename,
+            ).to_func()
+        )
+        .join("\n")
+    )
 
 
 def _check_generation(files: pc.Seq[Path]) -> pc.Result[None, str]:
@@ -177,32 +199,6 @@ def _check_status(exit_code: int) -> pc.Result[str, str]:
     if exit_code != 0:
         return pc.Err(f"[bold red]✗ Tests failed[/bold red] with exit code {exit_code}")
     return pc.Ok("[bold green]✓ All tests passed![/bold green]")
-
-
-def _build_line_map(
-    temp_dir: Path,
-) -> pc.Dict[str, pc.Dict[int, tuple[str, int]]]:
-    """Build a mapping from generated test file lines to source file lines.
-
-    Returns a Dict: {test_file: {line_num: (source_file, source_line)}}
-    """
-
-    def _parse_test_file(
-        test_file: Path,
-    ) -> tuple[str, pc.Dict[int, tuple[str, int]]]:
-        """Parse a single test file for line mappings."""
-        return test_file.name, (
-            pc.Iter(test_file.read_text(encoding="utf-8").splitlines())
-            .enumerate(start=1)
-            .filter_map(
-                lambda item: pc.Option.from_(
-                    Patterns.LINE_DIRECTIVE.search(item.value)
-                ).map(lambda m: (item.idx, (m.group(2), int(m.group(1)))))
-            )
-            .collect(pc.Dict)
-        )
-
-    return pc.Iter(temp_dir.glob("*_test.py")).map(_parse_test_file).collect(pc.Dict)
 
 
 def _replace_pytest_output(
@@ -260,34 +256,28 @@ def _run_tests(temp_dir: Path) -> int:
     return result.returncode
 
 
-class BlockTest(NamedTuple):
-    """Represents a testable block extracted from a stub file."""
-
-    name: str
-    """The name of the function or class."""
-    docstring: str
-    """The docstring associated with the function or class."""
-    line_number: int
-    """The line number in the source file where the block starts."""
-    source_file: str
-    """The name of the source file."""
-
-    @classmethod
-    def from_match(cls, match: re.Match[str], content: str, filename: str) -> Self:
-        return cls(
-            match.group(1),
-            match.group(2),
-            content[: match.start()].count("\n") + 1,
-            filename,
+def _build_line_map(
+    temp_dir: Path,
+) -> pc.Dict[str, pc.Dict[int, tuple[str, int]]]:
+    return (
+        pc.Iter(temp_dir.glob("*_test.py"))
+        .map(
+            lambda test_file: (
+                test_file.name,
+                (
+                    pc.Iter(test_file.read_text(encoding="utf-8").splitlines())
+                    .enumerate(start=1)
+                    .filter_map(
+                        lambda item: pc.Option.from_(
+                            Patterns.LINE_DIRECTIVE.search(item.value)
+                        ).map(lambda m: (item.idx, (m.group(2), int(m.group(1)))))
+                    )
+                    .collect(pc.Dict)
+                ),
+            )
         )
-
-    def to_func(self) -> str:
-        """Convert the block into a test function string."""
-        return f'''# line {self.line_number} "{self.source_file}"
-def test_{self.name}():
-    """{Patterns.clean(self.docstring)}"""
-    pass
-'''
+        .collect(pc.Dict)
+    )
 
 
 if __name__ == "__main__":

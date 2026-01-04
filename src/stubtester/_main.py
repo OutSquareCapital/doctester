@@ -161,7 +161,7 @@ class Patterns:
 
     BLOCK = re.compile(
         r"(?:def|class)\s+(\w+)(?:\[[^\]]*\])?\s*(?:\([^)]*\))?\s*(?:->[^:]+)?"
-        r':\s*"""(.*?)"""',
+        r':\s*[rRbBfFuU]*"""(.*?)"""',
         re.DOTALL,
     )
     PY_CODE = re.compile(r"^\s*```\w*\s*$", flags=re.MULTILINE)

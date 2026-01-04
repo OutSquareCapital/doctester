@@ -82,7 +82,7 @@ def function_with_default(x: int = 10, y: str = "default") -> str:
     """
 
 def function_with_complex_return() -> dict[str, list[int | None]]:
-    """Function with complex return type annotation.
+    r"""Function with complex return type annotation.
 
     ```python
     >>> # Complex nested types with union

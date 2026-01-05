@@ -137,7 +137,6 @@ def _path_exists(path: Path) -> pc.Result[Path, str]:
 
 def _should_ignore(p: Path, root: Path) -> bool:
     """Check if path should be ignored based on common directories."""
-    # Common directories to ignore (like .gitignore + build artifacts)
 
     def _get_rel_parts() -> pc.Option[pc.Iter[str]]:
         try:

@@ -28,7 +28,7 @@ def run(
     path: Annotated[
         Path,
         typer.Argument(
-            help="Path to a file or directory containing stub files to test",
+            help="Path to a file or directory containing files to test",
             parser=Path,
         ),
     ],
@@ -40,9 +40,9 @@ def run(
         ),
     ] = False,
 ) -> pc.Result[str, str]:
-    """Run all doctests in stub files (.pyi).
+    """Run all doctests in stub files (.pyi) or markdown files (.md).
 
-    This will discover all .pyi stub files and execute their doctests using pytest.
+    This will discover and execute their doctests using pytest with dynamically generated .py files.
 
     Args:
         path (Path): Path to a file or directory containing stub files to test.
@@ -61,7 +61,7 @@ def _header(path: Path) -> None:
     return console.print(
         Panel.fit(
             f"[bold cyan]Doctester[/bold cyan]\n"
-            f"Running tests in: [yellow]{path}[/yellow]",
+            f"Running tests in: [yellow]{path.absolute()}[/yellow]",
             border_style="cyan",
         )
     )

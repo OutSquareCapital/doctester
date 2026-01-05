@@ -21,6 +21,30 @@ app = typer.Typer(
     help="Run doctests from stub files (.pyi) using pytest --doctest-modules",
 )
 TEMP_DIR = Path("doctests_temp")
+IGNORED_PATHS: set[str] = {
+    ".venv",
+    "venv",
+    ".env",
+    "env",
+    ".git",
+    ".github",
+    ".hg",
+    "node_modules",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".tox",
+    ".coverage",
+    "build",
+    "dist",
+    ".eggs",
+    ".egg-info",
+    ".idea",
+    ".vscode",
+    ".DS_Store",
+}
+"""Common directory and file names to ignore when searching for stub files."""
 
 
 @app.command()
@@ -111,7 +135,29 @@ def _path_exists(path: Path) -> pc.Result[Path, str]:
     return pc.Err(f"[bold red]✗ Error:[/bold red] Path '{path}' not found.")
 
 
+def _should_ignore(p: Path, root: Path) -> bool:
+    """Check if path should be ignored based on common directories."""
+    # Common directories to ignore (like .gitignore + build artifacts)
+
+    def _get_rel_parts() -> pc.Option[pc.Iter[str]]:
+        try:
+            return pc.Some(pc.Iter(p.relative_to(root).parts))
+        except ValueError:
+            return pc.NONE
+
+    return (
+        _get_rel_parts()
+        .map(
+            lambda parts: parts.any(
+                lambda part: part in IGNORED_PATHS or part.endswith(".egg-info")
+            )
+        )
+        .unwrap_or(default=False)
+    )
+
+
 def _get_pyi_files(path: Path) -> pc.Iter[Path]:
+    """Discover .pyi and .md files, ignoring common directories (venv, .git, etc.)."""
     match path.is_file():
         case True:
             match path.suffix:
@@ -120,7 +166,24 @@ def _get_pyi_files(path: Path) -> pc.Iter[Path]:
                 case _:
                     return pc.Iter[Path].empty()
         case _:
-            return pc.Iter(path.rglob("*.pyi")).chain(pc.Iter(path.rglob("*.md")))
+
+            def _walk(current: Path) -> pc.Iter[Path]:
+                """Recursively walk directory, respecting ignored folders."""
+                return (
+                    pc.Iter(current.iterdir())
+                    .filter(lambda p: not _should_ignore(p, path))
+                    .flat_map(
+                        lambda p: (
+                            pc.Iter.once(p)
+                            if p.suffix in {".pyi", ".md"}
+                            else _walk(p)
+                            if p.is_dir()
+                            else pc.Iter[Path].empty()
+                        )
+                    )
+                )
+
+            return _walk(path)
 
 
 def _generate_test_file(file: Path, temp_dir: Path) -> pc.Option[Path]:

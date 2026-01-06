@@ -21,6 +21,7 @@ class Patterns:
         r"(?:[^\s/\\]*[/\\])*doctests_temp[/\\]([^/\\:]+)(?::(\d+)|::[\w.]+)",
     )
     TEST_NAME = re.compile(r"::([^:\s]+)")
+    TITLE = re.compile(r"[^a-zA-Z0-9_]")
 
     @classmethod
     def clean(cls, docstring: str) -> str:
@@ -76,7 +77,7 @@ class MarkdownBlock(NamedTuple):
 
     def to_func(self) -> str:
         """Convert the markdown block into a test function string."""
-        safe_title = re.sub(r"[^a-zA-Z0-9_]", "_", self.title).strip("_")
+        safe_title = Patterns.TITLE.sub("_", self.title).strip("_")
         escaped_code = self.code.replace("\\", "\\\\\\\\").replace('"""', '\\"\\"\\"')
         return f'''# line {self.line_number} "{self.source_file}"
 def test_{safe_title}():

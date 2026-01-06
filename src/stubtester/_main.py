@@ -117,15 +117,19 @@ def _temp_test_dir(
 
 
 def _execute_tests(temp_dir: Path, test_file: Path) -> pc.Result[str, str]:
-    return _path_exists(test_file).and_then(
-        lambda path: _get_pyi_files(path)
-        .filter_map(lambda file: _generate_test_file(file, temp_dir))
-        .collect()
-        .ok_or("[yellow]Warning:[/yellow] No doctests found in stub files.")
-        .map(lambda _: _run_tests(temp_dir))
-        .and_then(_check_status)
-        .inspect(console.print)
-        .inspect_err(console.print)
+    return (
+        pc.Option.if_true(test_file, predicate=test_file.exists)
+        .ok_or(f"[bold red]✗ Error:[/bold red] Path '{test_file}' not found.")
+        .and_then(
+            lambda path: _get_pyi_files(path)
+            .filter_map(lambda file: _generate_test_file(file, temp_dir))
+            .collect()
+            .ok_or("[yellow]Warning:[/yellow] No doctests found in stub files.")
+            .map(lambda _: _run_tests(temp_dir))
+            .and_then(_check_status)
+            .inspect(console.print)
+            .inspect_err(console.print)
+        )
     )
 
 
@@ -135,18 +139,12 @@ def _check_status(exit_code: int) -> pc.Result[str, str]:
     return pc.Ok("[bold green]✓ All tests passed![/bold green]")
 
 
-def _path_exists(path: Path) -> pc.Result[Path, str]:
-    if path.exists():
-        return pc.Ok(path)
-    return pc.Err(f"[bold red]✗ Error:[/bold red] Path '{path}' not found.")
-
-
 def _should_ignore(p: Path, root: Path) -> bool:
     """Check if path should be ignored based on common directories."""
 
     def _get_rel_parts() -> pc.Option[pc.Iter[str]]:
         try:
-            return pc.Some(pc.Iter(p.relative_to(root).parts))
+            return pc.Iter(p.relative_to(root).parts).into(pc.Some)
         except ValueError:
             return pc.NONE
 
@@ -170,7 +168,7 @@ def _get_pyi_files(path: Path) -> pc.Iter[Path]:
                     return pc.Iter.once(path)
                 case _:
                     return pc.Iter[Path].empty()
-        case _:
+        case False:
 
             def _walk(current: Path) -> pc.Iter[Path]:
                 """Recursively walk directory, respecting ignored folders."""
@@ -250,39 +248,6 @@ def _parse_markdown(content: str, filename: str) -> pc.Iter[str]:
     )
 
 
-def _replace_pytest_output(
-    line_map: pc.Dict[str, pc.Dict[int, tuple[str, int]]], output: str
-) -> str:
-    """Replace references to generated test files with source file references."""
-
-    def replacer(match: re.Match[str]) -> str:
-        line_str = match.group(2)
-
-        return (
-            line_map.get_item(match.group(1))
-            .and_then(
-                lambda file_map: (
-                    pc.Option(int(line_str) if line_str else None)
-                    .and_then(
-                        lambda line_num: file_map.get_item(line_num).map(
-                            lambda v: f"tests/examples/{v[0]}:{v[1]}"
-                        )
-                    )
-                    .or_else(
-                        lambda: pc.Option(
-                            Patterns.TEST_NAME.search(match.group(0))
-                        ).map(
-                            lambda m: f"tests/examples/{file_map.values_iter().next().unwrap()[0]}::{m.group(1)}"
-                        )
-                    )
-                )
-            )
-            .unwrap_or(match.group(0))
-        )
-
-    return Patterns.TEST_FILE.sub(replacer, output)
-
-
 def _run_tests(temp_dir: Path) -> int:
     result = subprocess.run(
         args=(
@@ -303,6 +268,41 @@ def _run_tests(temp_dir: Path) -> int:
         console.print(result.stderr, style="red", end="")
 
     return result.returncode
+
+
+def _replace_pytest_output(
+    line_map: pc.Dict[str, pc.Dict[int, tuple[str, int]]], output: str
+) -> str:
+    """Replace references to generated test files with source file references."""
+
+    def replacer(match: re.Match[str]) -> str:
+        line_str = match.group(2)
+
+        return (
+            line_map.get_item(match.group(1))
+            .and_then(
+                lambda file_map: (
+                    pc.Option(
+                        int(line_str) if line_str else None
+                    )  # TODO: add if_some on Option for eval on object truthiness itself
+                    .and_then(
+                        lambda line_num: file_map.get_item(line_num).map(
+                            lambda v: f"tests/examples/{v[0]}:{v[1]}"
+                        )
+                    )
+                    .or_else(
+                        lambda: pc.Option(
+                            Patterns.TEST_NAME.search(match.group(0))
+                        ).map(
+                            lambda m: f"tests/examples/{file_map.values_iter().next().unwrap()[0]}::{m.group(1)}"
+                        )
+                    )
+                )
+            )
+            .unwrap_or(match.group(0))
+        )
+
+    return Patterns.TEST_FILE.sub(replacer, output)
 
 
 def _build_line_map(

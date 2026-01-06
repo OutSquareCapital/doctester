@@ -262,14 +262,14 @@ def _replace_pytest_output(
             line_map.get_item(match.group(1))
             .and_then(
                 lambda file_map: (
-                    pc.Option.from_(int(line_str) if line_str else None)
+                    pc.Option(int(line_str) if line_str else None)
                     .and_then(
                         lambda line_num: file_map.get_item(line_num).map(
                             lambda v: f"tests/examples/{v[0]}:{v[1]}"
                         )
                     )
                     .or_else(
-                        lambda: pc.Option.from_(
+                        lambda: pc.Option(
                             Patterns.TEST_NAME.search(match.group(0))
                         ).map(
                             lambda m: f"tests/examples/{file_map.values_iter().next().unwrap()[0]}::{m.group(1)}"
@@ -317,7 +317,7 @@ def _build_line_map(
                     pc.Iter(test_file.read_text(encoding="utf-8").splitlines())
                     .enumerate(start=1)
                     .filter_map(
-                        lambda item: pc.Option.from_(
+                        lambda item: pc.Option(
                             Patterns.LINE_DIRECTIVE.search(item.value)
                         ).map(lambda m: (item.idx, (m.group(2), int(m.group(1)))))
                     )

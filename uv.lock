@@ -229,7 +229,7 @@ wheels = [
 
 [[package]]
 name = "pyochain"
-version = "0.6.1.71"
+version = "0.6.1.72"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -238,9 +238,9 @@ dependencies = [
     { name = "cytoolz", marker = "python_full_version >= '3.13'" },
     { name = "more-itertools", marker = "python_full_version >= '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/be/c8/da0d6ab031509983f3d2bca389cddf7cf4ef49b4c320ce191c7aed8469c1/pyochain-0.6.1.71.tar.gz", hash = "sha256:57f1855baf33ecf0e12152266b878ab9f3819ed056d3de11f4ec9935ca192878", size = 43065, upload-time = "2026-01-06T00:11:05.643Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d2/65/3f39c60130bade7b7a14c3c0340f5c179bb55f276eb41dbdd2218ff75595/pyochain-0.6.1.72.tar.gz", hash = "sha256:c3a9a04e6ae0624adbffd1868f62c2982ddaa0919f4b49fd390532290ed67612", size = 43921, upload-time = "2026-01-06T16:42:33.496Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/78/2cc1d717d86b5cdb61f447c474f8f6269990ac95395e41cb9c6a194e71cb/pyochain-0.6.1.71-py3-none-any.whl", hash = "sha256:2b3c3c3cf3847d15e9bf26ee8e5a81b7f72b69d80cc1d0def3c6707b82767eca", size = 47059, upload-time = "2026-01-06T00:11:06.393Z" },
+    { url = "https://files.pythonhosted.org/packages/87/7a/b1f5f1ca2e0903a2264a30a85aa2e19d598128dfe02ad698da0b556a6612/pyochain-0.6.1.72-py3-none-any.whl", hash = "sha256:9a33f58ac8a33ea3f110f70390645f6f2f9998cbed7ade260a3ab34d8390c4a5", size = 47924, upload-time = "2026-01-06T16:42:32.4Z" },
 ]
 
 [[package]]
@@ -321,7 +321,7 @@ version = "0.1.5"
 source = { editable = "." }
 dependencies = [
     { name = "pyochain", version = "0.5.52", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
-    { name = "pyochain", version = "0.6.1.71", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
+    { name = "pyochain", version = "0.6.1.72", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "pytest" },
     { name = "rich" },
     { name = "typer" },
@@ -354,7 +354,7 @@ wheels = [
 
 [[package]]
 name = "typer"
-version = "0.21.0"
+version = "0.21.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -362,9 +362,9 @@ dependencies = [
     { name = "shellingham" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/85/30/ff9ede605e3bd086b4dd842499814e128500621f7951ca1e5ce84bbf61b1/typer-0.21.0.tar.gz", hash = "sha256:c87c0d2b6eee3b49c5c64649ec92425492c14488096dfbc8a0c2799b2f6f9c53", size = 106781, upload-time = "2025-12-25T09:54:53.651Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/36/bf/8825b5929afd84d0dabd606c67cd57b8388cb3ec385f7ef19c5cc2202069/typer-0.21.1.tar.gz", hash = "sha256:ea835607cd752343b6b2b7ce676893e5a0324082268b48f27aa058bdb7d2145d", size = 110371, upload-time = "2026-01-06T11:21:10.989Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e1/e4/5ebc1899d31d2b1601b32d21cfb4bba022ae6fce323d365f0448031b1660/typer-0.21.0-py3-none-any.whl", hash = "sha256:c79c01ca6b30af9fd48284058a7056ba0d3bf5cf10d0ff3d0c5b11b68c258ac6", size = 47109, upload-time = "2025-12-25T09:54:51.918Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/1d/d9257dd49ff2ca23ea5f132edf1281a0c4f9de8a762b9ae399b670a59235/typer-0.21.1-py3-none-any.whl", hash = "sha256:7985e89081c636b88d172c2ee0cfe33c253160994d47bdfdc302defd7d1f1d01", size = 47381, upload-time = "2026-01-06T11:21:09.824Z" },
 ]
 
 [[package]]

@@ -225,23 +225,23 @@ def _parse_markdown(content: str, filename: str) -> pc.Iter[str]:
 
     def _find_header_for_block(block_start: int) -> str:
         """Find the closest header before this block."""
-        last_header = (
+        return (
             headers.iter()
             .filter(lambda h: h.start() < block_start)
             .map(lambda h: h.group(2).strip())
-            .last()
+            .into(lambda x: pc.Option.if_some(x.last()))
+            .unwrap_or("markdown_test")
         )
-        return last_header if last_header else "markdown_test"
 
     return (
         pc.Iter(Patterns.MARKDOWN_BLOCK.finditer(content))
         .enumerate()
-        .filter(lambda item: item.value.group(1) in {"py", "python"})
-        .map(
-            lambda item: MarkdownBlock(
-                title=f"{_find_header_for_block(item.value.start())}_{item.idx}",
-                code=item.value.group(2),
-                line_number=content[: item.value.start()].count("\n") + 1,
+        .filter_star(lambda _, value: value.group(1) in {"py", "python"})
+        .map_star(
+            lambda idx, value: MarkdownBlock(
+                title=f"{_find_header_for_block(value.start())}_{idx}",
+                code=value.group(2),
+                line_number=content[: value.start()].count("\n") + 1,
                 source_file=filename,
             ).to_func()
         )
@@ -276,15 +276,12 @@ def _replace_pytest_output(
     """Replace references to generated test files with source file references."""
 
     def replacer(match: re.Match[str]) -> str:
-        line_str = match.group(2)
-
         return (
             line_map.get_item(match.group(1))
             .and_then(
                 lambda file_map: (
-                    pc.Option(
-                        int(line_str) if line_str else None
-                    )  # TODO: add if_some on Option for eval on object truthiness itself
+                    pc.Option.if_some(match.group(2))
+                    .map(int)
                     .and_then(
                         lambda line_num: file_map.get_item(line_num).map(
                             lambda v: f"tests/examples/{v[0]}:{v[1]}"
@@ -318,8 +315,8 @@ def _build_line_map(
                     .enumerate(start=1)
                     .filter_map(
                         lambda item: pc.Option(
-                            Patterns.LINE_DIRECTIVE.search(item.value)
-                        ).map(lambda m: (item.idx, (m.group(2), int(m.group(1)))))
+                            Patterns.LINE_DIRECTIVE.search(item[1])
+                        ).map(lambda m: (item[0], (m.group(2), int(m.group(1)))))
                     )
                     .collect(pc.Dict)
                 ),

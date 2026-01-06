@@ -229,7 +229,7 @@ wheels = [
 
 [[package]]
 name = "pyochain"
-version = "0.6.1.61"
+version = "0.6.1.71"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -238,9 +238,9 @@ dependencies = [
     { name = "cytoolz", marker = "python_full_version >= '3.13'" },
     { name = "more-itertools", marker = "python_full_version >= '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/3f/b25adac56c1e263cc5e78f1252059037b35472a0940aede4a87e404df817/pyochain-0.6.1.61.tar.gz", hash = "sha256:59672236737fa6a24f19d75a1a412c84c4ab3d1d9745ff251bfeb38de8f08dd5", size = 41756, upload-time = "2026-01-04T14:50:24.19Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/be/c8/da0d6ab031509983f3d2bca389cddf7cf4ef49b4c320ce191c7aed8469c1/pyochain-0.6.1.71.tar.gz", hash = "sha256:57f1855baf33ecf0e12152266b878ab9f3819ed056d3de11f4ec9935ca192878", size = 43065, upload-time = "2026-01-06T00:11:05.643Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/a9/c5b73c1a66e3abdf85bf08885871cffa1c22195cc5403015b0ef97e83b73/pyochain-0.6.1.61-py3-none-any.whl", hash = "sha256:9b8648cb33dcbb3e15535091829bd1c6116a2013a888b6ba22fbea4f10dd2baf", size = 45541, upload-time = "2026-01-04T14:50:22.945Z" },
+    { url = "https://files.pythonhosted.org/packages/14/78/2cc1d717d86b5cdb61f447c474f8f6269990ac95395e41cb9c6a194e71cb/pyochain-0.6.1.71-py3-none-any.whl", hash = "sha256:2b3c3c3cf3847d15e9bf26ee8e5a81b7f72b69d80cc1d0def3c6707b82767eca", size = 47059, upload-time = "2026-01-06T00:11:06.393Z" },
 ]
 
 [[package]]
@@ -321,7 +321,7 @@ version = "0.1.5"
 source = { editable = "." }
 dependencies = [
     { name = "pyochain", version = "0.5.52", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
-    { name = "pyochain", version = "0.6.1.61", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
+    { name = "pyochain", version = "0.6.1.71", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "pytest" },
     { name = "rich" },
     { name = "typer" },

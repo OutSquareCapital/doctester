@@ -121,12 +121,18 @@ def _execute_tests(temp_dir: Path, test_file: Path) -> pc.Result[str, str]:
         lambda path: _get_pyi_files(path)
         .filter_map(lambda file: _generate_test_file(file, temp_dir))
         .collect()
-        .into(_check_generation)
+        .ok_or("[yellow]Warning:[/yellow] No doctests found in stub files.")
         .map(lambda _: _run_tests(temp_dir))
         .and_then(_check_status)
         .inspect(console.print)
         .inspect_err(console.print)
     )
+
+
+def _check_status(exit_code: int) -> pc.Result[str, str]:
+    if exit_code != 0:
+        return pc.Err(f"[bold red]✗ Tests failed[/bold red] with exit code {exit_code}")
+    return pc.Ok("[bold green]✓ All tests passed![/bold green]")
 
 
 def _path_exists(path: Path) -> pc.Result[Path, str]:
@@ -188,20 +194,15 @@ def _get_pyi_files(path: Path) -> pc.Iter[Path]:
 def _generate_test_file(file: Path, temp_dir: Path) -> pc.Option[Path]:
     test_file = temp_dir.joinpath(f"{file.stem}_test.py")
     return (
-        _generate_test_module_content(file)
-        .map(lambda content: test_file.write_text(content, encoding="utf-8"))
+        _get_blocks(file)
+        .collect()
+        .then_some()
+        .map(lambda x: test_file.write_text(x.join("\n"), encoding="utf-8"))
         .map(lambda _: test_file)
     )
 
 
-def _generate_test_module_content(file: Path) -> pc.Option[str]:
-    res = _get_blocks(file)
-    if not res:
-        return pc.NONE
-    return pc.Some(f"# Generated tests from {file.name}\n\n" + res)
-
-
-def _get_blocks(file: Path) -> str:
+def _get_blocks(file: Path) -> pc.Iter[str]:
     content = file.read_text(encoding="utf-8")
     match file.suffix:
         case ".md":
@@ -209,19 +210,18 @@ def _get_blocks(file: Path) -> str:
         case ".pyi":
             return _parse_stub(content, file.name)
         case _:
-            return ""
+            return pc.Iter[str].empty()
 
 
-def _parse_stub(content: str, filename: str) -> str:
+def _parse_stub(content: str, filename: str) -> pc.Iter[str]:
     return (
         pc.Iter(Patterns.BLOCK.finditer(content))
         .map(lambda match: BlockTest.from_match(match, content, filename).to_func())
         .filter(lambda s: s.strip() != "")
-        .join("\n")
     )
 
 
-def _parse_markdown(content: str, filename: str) -> str:
+def _parse_markdown(content: str, filename: str) -> pc.Iter[str]:
     """Parse markdown file and extract code blocks."""
     headers = pc.Iter(Patterns.MARKDOWN_HEADER.finditer(content)).collect()
 
@@ -247,20 +247,7 @@ def _parse_markdown(content: str, filename: str) -> str:
                 source_file=filename,
             ).to_func()
         )
-        .join("\n")
     )
-
-
-def _check_generation(files: pc.Seq[Path]) -> pc.Result[None, str]:
-    if files.length() == 0:
-        return pc.Err("[yellow]Warning:[/yellow] No doctests found in stub files.")
-    return pc.Ok(None)
-
-
-def _check_status(exit_code: int) -> pc.Result[str, str]:
-    if exit_code != 0:
-        return pc.Err(f"[bold red]✗ Tests failed[/bold red] with exit code {exit_code}")
-    return pc.Ok("[bold green]✓ All tests passed![/bold green]")
 
 
 def _replace_pytest_output(

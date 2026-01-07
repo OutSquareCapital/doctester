@@ -9,6 +9,7 @@ def add(x: int, y: int) -> int:
     5
     >>> 10 + (-5)
     5
+
     ```
     """
 
@@ -20,6 +21,7 @@ def multiply(x: int, y: int) -> int:
     12
     >>> 0 * 100
     0
+
     ```
     """
 
@@ -46,6 +48,7 @@ class EdgeCases:
     >>> obj = Example()
     >>> type(obj).__name__
     'Example'
+
     ```
     """
 
@@ -61,6 +64,7 @@ class EdgeCases:
         'hello'
         >>> identity([1, 2, 3])
         [1, 2, 3]
+
         ```
         """
 
@@ -78,6 +82,7 @@ def function_with_default(x: int = 10, y: str = "default") -> str:
     'Hi, Bob!'
     >>> greet(prefix="Hey", name="Charlie")
     'Hey, Charlie!'
+
     ```
     """
 
@@ -97,5 +102,6 @@ def function_with_complex_return() -> dict[str, list[int | None]]:
     3
     >>> None in result["mixed"]
     True
+
     ```
     """

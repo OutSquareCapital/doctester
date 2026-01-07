@@ -1,4 +1,3 @@
-import re
 import shutil
 import subprocess
 from collections.abc import Generator
@@ -11,7 +10,7 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 
-from ._blocks import BlockTest, MarkdownBlock, Patterns
+from ._blocks import parse_markdown
 
 console = Console()
 
@@ -121,11 +120,11 @@ def _execute_tests(temp_dir: Path, test_file: Path) -> pc.Result[str, str]:
         pc.Option.if_true(test_file, predicate=test_file.exists)
         .ok_or(f"[bold red]✗ Error:[/bold red] Path '{test_file}' not found.")
         .and_then(
-            lambda path: _get_pyi_files(path)
+            lambda path: _get_test_files(path)
             .filter_map(lambda file: _generate_test_file(file, temp_dir))
             .collect()
             .ok_or("[yellow]Warning:[/yellow] No doctests found in stub files.")
-            .map(lambda _: _run_tests(temp_dir))
+            .map(lambda path_map: _run_tests(temp_dir, path_map))
             .and_then(_check_status)
             .inspect(console.print)
             .inspect_err(console.print)
@@ -141,25 +140,15 @@ def _check_status(exit_code: int) -> pc.Result[str, str]:
 
 def _should_ignore(p: Path, root: Path) -> bool:
     """Check if path should be ignored based on common directories."""
-
-    def _get_rel_parts() -> pc.Option[pc.Iter[str]]:
-        try:
-            return pc.Iter(p.relative_to(root).parts).into(pc.Some)
-        except ValueError:
-            return pc.NONE
-
-    return (
-        _get_rel_parts()
-        .map(
-            lambda parts: parts.any(
-                lambda part: part in IGNORED_PATHS or part.endswith(".egg-info")
-            )
+    try:
+        return pc.Iter(p.relative_to(root).parts).any(
+            lambda part: part in IGNORED_PATHS or part.endswith(".egg-info")
         )
-        .unwrap_or(default=False)
-    )
+    except ValueError:
+        return False
 
 
-def _get_pyi_files(path: Path) -> pc.Iter[Path]:
+def _get_test_files(path: Path) -> pc.Iter[Path]:
     """Discover .pyi and .md files, ignoring common directories (venv, .git, etc.)."""
     match path.is_file():
         case True:
@@ -169,34 +158,21 @@ def _get_pyi_files(path: Path) -> pc.Iter[Path]:
                 case _:
                     return pc.Iter[Path].empty()
         case False:
-
-            def _walk(current: Path) -> pc.Iter[Path]:
-                """Recursively walk directory, respecting ignored folders."""
-                return (
-                    pc.Iter(current.iterdir())
-                    .filter(lambda p: not _should_ignore(p, path))
-                    .flat_map(
-                        lambda p: (
-                            pc.Iter.once(p)
-                            if p.suffix in {".pyi", ".md"}
-                            else _walk(p)
-                            if p.is_dir()
-                            else pc.Iter[Path].empty()
-                        )
-                    )
-                )
-
-            return _walk(path)
+            return (
+                pc.Iter(path.rglob("*.pyi"))
+                .chain(path.rglob("*.md"))
+                .filter_false(lambda p: _should_ignore(p, path))
+            )
 
 
-def _generate_test_file(file: Path, temp_dir: Path) -> pc.Option[Path]:
+def _generate_test_file(file: Path, temp_dir: Path) -> pc.Option[tuple[Path, Path]]:
     test_file = temp_dir.joinpath(f"{file.stem}_test.py")
     return (
         _get_blocks(file)
         .collect()
         .then_some()
-        .map(lambda x: test_file.write_text(x.join("\n"), encoding="utf-8"))
-        .map(lambda _: test_file)
+        .map(lambda blocks: test_file.write_text(blocks.join("\n"), encoding="utf-8"))
+        .map(lambda _: (test_file, file))
     )
 
 
@@ -204,51 +180,14 @@ def _get_blocks(file: Path) -> pc.Iter[str]:
     content = file.read_text(encoding="utf-8")
     match file.suffix:
         case ".md":
-            return _parse_markdown(content, file.name)
+            return parse_markdown(content)
         case ".pyi":
-            return _parse_stub(content, file.name)
+            return pc.Iter.once(content)
         case _:
             return pc.Iter[str].empty()
 
 
-def _parse_stub(content: str, filename: str) -> pc.Iter[str]:
-    return (
-        pc.Iter(Patterns.BLOCK.finditer(content))
-        .map(lambda match: BlockTest.from_match(match, content, filename).to_func())
-        .filter(lambda s: s.strip() != "")
-    )
-
-
-def _parse_markdown(content: str, filename: str) -> pc.Iter[str]:
-    """Parse markdown file and extract code blocks."""
-    headers = pc.Iter(Patterns.MARKDOWN_HEADER.finditer(content)).collect()
-
-    def _find_header_for_block(block_start: int) -> str:
-        """Find the closest header before this block."""
-        return (
-            headers.iter()
-            .filter(lambda h: h.start() < block_start)
-            .map(lambda h: h.group(2).strip())
-            .into(lambda x: pc.Option.if_some(x.last()))
-            .unwrap_or("markdown_test")
-        )
-
-    return (
-        pc.Iter(Patterns.MARKDOWN_BLOCK.finditer(content))
-        .enumerate()
-        .filter_star(lambda _, value: value.group(1) in {"py", "python"})
-        .map_star(
-            lambda idx, value: MarkdownBlock(
-                title=f"{_find_header_for_block(value.start())}_{idx}",
-                code=value.group(2),
-                line_number=content[: value.start()].count("\n") + 1,
-                source_file=filename,
-            ).to_func()
-        )
-    )
-
-
-def _run_tests(temp_dir: Path) -> int:
+def _run_tests(temp_dir: Path, path_map: pc.Seq[tuple[Path, Path]]) -> int:
     result = subprocess.run(
         args=(
             "pytest",
@@ -260,69 +199,29 @@ def _run_tests(temp_dir: Path) -> int:
         capture_output=True,
         text=True,
     )
-    processed_output = _build_line_map(temp_dir).into(
-        _replace_pytest_output, result.stdout
-    )
-    console.print(processed_output, end="")
-    if result.stderr:
-        console.print(result.stderr, style="red", end="")
+
+    stdout = _remap_paths(result.stdout, path_map, temp_dir)
+    stderr = _remap_paths(result.stderr, path_map, temp_dir)
+
+    console.print(stdout, end="")
+    if stderr:
+        console.print(stderr, style="red", end="")
 
     return result.returncode
 
 
-def _replace_pytest_output(
-    line_map: pc.Dict[str, pc.Dict[int, tuple[str, int]]], output: str
-) -> str:
-    """Replace references to generated test files with source file references."""
-
-    def replacer(match: re.Match[str]) -> str:
-        return (
-            line_map.get_item(match.group(1))
-            .and_then(
-                lambda file_map: (
-                    pc.Option.if_some(match.group(2))
-                    .map(int)
-                    .and_then(
-                        lambda line_num: file_map.get_item(
-                            line_num
-                        ).map(  # TODO: map_star for Option/Result
-                            lambda v: f"tests/examples/{v[0]}:{v[1]}"
-                        )
-                    )
-                    .or_else(
-                        lambda: pc.Option(
-                            Patterns.TEST_NAME.search(match.group(0))
-                        ).map(
-                            lambda m: f"tests/examples/{file_map.values_iter().next().unwrap()[0]}::{m.group(1)}"
-                        )
-                    )
-                )
-            )
-            .unwrap_or(match.group(0))
-        )
-
-    return Patterns.TEST_FILE.sub(replacer, output)
-
-
-def _build_line_map(
-    temp_dir: Path,
-) -> pc.Dict[str, pc.Dict[int, tuple[str, int]]]:
-    def _test_file(test_file: Path) -> pc.Dict[int, tuple[str, int]]:
-        return (
-            pc.Iter(test_file.read_text(encoding="utf-8").splitlines())
-            .enumerate(start=1)
-            .filter_map_star(
-                lambda idx, line: pc.Option(Patterns.LINE_DIRECTIVE.search(line)).map(
-                    lambda m: (idx, (m.group(2), int(m.group(1))))
-                )
-            )
-            .collect(pc.Dict)
-        )
-
+def _remap_paths(text: str, path_map: pc.Seq[tuple[Path, Path]], temp_dir: Path) -> str:
+    """Replace temporary file paths with original source file paths."""
     return (
-        pc.Iter(temp_dir.glob("*_test.py"))
-        .map(lambda test_file: (test_file.name, _test_file(test_file)))
-        .collect(pc.Dict)
+        pc.Iter(path_map)
+        .fold(
+            text,
+            lambda acc, paths: acc.replace(
+                paths[0].as_posix(), paths[1].as_posix()
+            ).replace(str(paths[0]), str(paths[1])),
+        )
+        .replace(temp_dir.as_posix(), "")
+        .replace(str(temp_dir), "")
     )
 
 

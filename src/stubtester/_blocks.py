@@ -1,86 +1,51 @@
 import re
-from typing import NamedTuple, Self
+
+import pyochain as pc
 
 
 class Patterns:
     """Regex patterns for parsing stub files."""
 
     BLOCK = re.compile(
-        r"(?:def|class)\s+(\w+)(?:\[[^\]]*\])?\s*(?:\([^)]*\))?\s*(?:->[^:]+)?"
-        r':\s*[rRbBfFuU]*"""(.*?)"""',
-        re.DOTALL,
-    )
-    MARKDOWN_BLOCK = re.compile(
         r"^```(\w+)\s*$\n(.*?)^```$",
         re.MULTILINE | re.DOTALL,
     )
-    MARKDOWN_HEADER = re.compile(r"^(#+)\s+(.+)$", re.MULTILINE)
-    PY_CODE = re.compile(r"^\s*```\w*\s*$", flags=re.MULTILINE)
-    LINE_DIRECTIVE = re.compile(r'#\s*line\s+(\d+)\s+"([^"]+)"')
-    TEST_FILE = re.compile(
-        r"(?:[^\s/\\]*[/\\])*doctests_temp[/\\]([^/\\:]+)(?::(\d+)|::[\w.]+)",
-    )
-    TEST_NAME = re.compile(r"::([^:\s]+)")
+    HEADER = re.compile(r"^(#+)\s+(.+)$", re.MULTILINE)
     TITLE = re.compile(r"[^a-zA-Z0-9_]")
 
-    @classmethod
-    def clean(cls, docstring: str) -> str:
-        return re.sub(cls.PY_CODE, "", docstring)
 
+def parse_markdown(content: str) -> pc.Iter[str]:
+    """Parse markdown file and extract code blocks."""
+    headers = pc.Iter(Patterns.HEADER.finditer(content)).collect()
 
-class BlockTest(NamedTuple):
-    """Represents a testable block extracted from a stub file."""
-
-    name: str
-    """The name of the function or class."""
-    docstring: str
-    """The docstring associated with the function or class."""
-    line_number: int
-    """The line number in the source file where the block starts."""
-    source_file: str
-    """The name of the source file."""
-
-    @classmethod
-    def from_match(cls, match: re.Match[str], content: str, filename: str) -> Self:
-        return cls(
-            match.group(1),
-            match.group(2),
-            content[: match.start()].count("\n") + 1,
-            filename,
+    def _find_header_for_block(block_start: int) -> str:
+        """Find the closest header before this block."""
+        return (
+            headers.iter()
+            .filter(lambda h: h.start() < block_start)
+            .map(lambda h: h.group(2).strip())
+            .into(lambda x: pc.Option.if_some(x.last()))
+            .unwrap_or("markdown_test")
         )
 
-    def to_func(self) -> str:
-        """Convert the block into a test function string."""
-        escaped_code = (
-            Patterns.clean(self.docstring)
-            .replace("\\", "\\\\\\\\")
-            .replace('"""', '\\"\\"\\"')
-        )
-        return f'''# line {self.line_number} "{self.source_file}"
-def test_{self.name}():
-    """{escaped_code}"""
-    pass
-'''
-
-
-class MarkdownBlock(NamedTuple):
-    """Represents a code block extracted from a markdown file."""
-
-    title: str
-    """The section title from the markdown header."""
-    code: str
-    """The code content."""
-    line_number: int
-    """The line number in the source file."""
-    source_file: str
-    """The name of the source file."""
-
-    def to_func(self) -> str:
+    def _to_func(title: str, code: str) -> str:
         """Convert the markdown block into a test function string."""
-        safe_title = Patterns.TITLE.sub("_", self.title).strip("_")
-        escaped_code = self.code.replace("\\", "\\\\\\\\").replace('"""', '\\"\\"\\"')
-        return f'''# line {self.line_number} "{self.source_file}"
-def test_{safe_title}():
-    """{escaped_code}"""
+        return f'''def test_{title}():
+    """{code}"""
     pass
 '''
+
+    return (
+        pc.Iter(Patterns.BLOCK.finditer(content))
+        .enumerate()
+        .filter_star(lambda _, value: value.group(1) in {"py", "python"})
+        .map_star(
+            lambda idx, value: (
+                Patterns.TITLE.sub(
+                    "_", f"{_find_header_for_block(value.start())}_{idx}"
+                ).strip("_"),
+                value.group(2).replace("\\", "\\\\\\\\").replace('"""', '\\"\\"\\"'),
+            )
+        )
+        .map_star(lambda title, code: _to_func(title, code))
+    )

@@ -28,13 +28,6 @@ def parse_markdown(content: str) -> pc.Iter[str]:
             .unwrap_or("markdown_test")
         )
 
-    def _to_func(title: str, code: str) -> str:
-        """Convert the markdown block into a test function string."""
-        return f'''def test_{title}():
-    """{code}"""
-    pass
-'''
-
     return (
         pc.Iter(Patterns.BLOCK.finditer(content))
         .enumerate()
@@ -49,3 +42,11 @@ def parse_markdown(content: str) -> pc.Iter[str]:
         )
         .map_star(lambda title, code: _to_func(title, code))
     )
+
+
+def _to_func(title: str, code: str) -> str:
+    """Convert the markdown block into a test function string."""
+    return f'''def test_{title}():
+    """{code}"""
+    pass
+'''

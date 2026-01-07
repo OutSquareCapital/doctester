@@ -46,7 +46,7 @@ def parse_markdown(content: str) -> pc.Iter[str]:
 
 def _to_func(title: str, code: str) -> str:
     """Convert the markdown block into a test function string."""
-    return f'''def test_{title}():
+    return f'''def {title}():
     """{code}"""
     pass
 '''

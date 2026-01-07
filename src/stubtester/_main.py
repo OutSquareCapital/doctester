@@ -283,7 +283,9 @@ def _replace_pytest_output(
                     pc.Option.if_some(match.group(2))
                     .map(int)
                     .and_then(
-                        lambda line_num: file_map.get_item(line_num).map(
+                        lambda line_num: file_map.get_item(
+                            line_num
+                        ).map(  # TODO: map_star for Option/Result
                             lambda v: f"tests/examples/{v[0]}:{v[1]}"
                         )
                     )
@@ -305,23 +307,21 @@ def _replace_pytest_output(
 def _build_line_map(
     temp_dir: Path,
 ) -> pc.Dict[str, pc.Dict[int, tuple[str, int]]]:
+    def _test_file(test_file: Path) -> pc.Dict[int, tuple[str, int]]:
+        return (
+            pc.Iter(test_file.read_text(encoding="utf-8").splitlines())
+            .enumerate(start=1)
+            .filter_map_star(
+                lambda idx, line: pc.Option(Patterns.LINE_DIRECTIVE.search(line)).map(
+                    lambda m: (idx, (m.group(2), int(m.group(1))))
+                )
+            )
+            .collect(pc.Dict)
+        )
+
     return (
         pc.Iter(temp_dir.glob("*_test.py"))
-        .map(
-            lambda test_file: (
-                test_file.name,
-                (
-                    pc.Iter(test_file.read_text(encoding="utf-8").splitlines())
-                    .enumerate(start=1)
-                    .filter_map(
-                        lambda item: pc.Option(
-                            Patterns.LINE_DIRECTIVE.search(item[1])
-                        ).map(lambda m: (item[0], (m.group(2), int(m.group(1)))))
-                    )
-                    .collect(pc.Dict)
-                ),
-            )
-        )
+        .map(lambda test_file: (test_file.name, _test_file(test_file)))
         .collect(pc.Dict)
     )
 

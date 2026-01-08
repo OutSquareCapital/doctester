@@ -130,9 +130,9 @@ def _execute_tests(temp_dir: Path, test_file: Path) -> pc.Result[Text, Text]:
     return (
         pc.Option.if_true(test_file, predicate=test_file.exists)
         .ok_or(
-            Text()
-            .append(Text("\u2717 Error:", style="bold red"))
-            .append(f" Path '{test_file}' not found.")
+            Text("\u2717 Error:", style="bold red").append(
+                f" Path '{test_file}' not found."
+            )
         )
         .inspect_err(console.print)
         .and_then(
@@ -203,22 +203,6 @@ def _get_blocks(file: Path) -> pc.Iter[str]:
 def _run_tests(
     temp_dir: Path, path_map: pc.Seq[tuple[Path, Path]]
 ) -> pc.Result[Text, Text]:
-    def _remap_if_some(out: str) -> pc.Option[None]:
-        return (
-            pc.Option.if_some(out)
-            .map(
-                lambda text: path_map.iter()
-                .fold(
-                    text,
-                    lambda acc, paths: acc.replace(
-                        paths[0].as_posix(), paths[1].as_posix()
-                    ),
-                )
-                .replace(temp_dir.as_posix(), "")
-            )
-            .map(lambda s: console.print(s))
-        )
-
     result = subprocess.run(
         args=(
             "pytest",
@@ -230,10 +214,25 @@ def _run_tests(
         capture_output=True,
         text=True,
     )
-    _remap_if_some(result.stdout)
-    _remap_if_some(result.stderr)
+    _remap_if_some(result.stdout, path_map)
+    _remap_if_some(result.stderr, path_map)
 
     return _check_status(result.returncode)
+
+
+def _remap_if_some(out: str, path_map: pc.Seq[tuple[Path, Path]]) -> pc.Option[None]:
+    return (
+        pc.Option.if_some(out)
+        .map(
+            lambda text: path_map.iter().fold(
+                text,
+                lambda acc, paths: acc.replace(
+                    paths[0].as_posix(), paths[1].as_posix()
+                ),
+            )
+        )
+        .map(lambda s: console.print(s))
+    )
 
 
 def _check_status(exit_code: int) -> pc.Result[Text, Text]:
@@ -246,7 +245,3 @@ def _check_status(exit_code: int) -> pc.Result[Text, Text]:
                 f" with exit code {exit_code}"
             )
             return pc.Err(msg)
-
-
-if __name__ == "__main__":
-    app()

@@ -9,6 +9,7 @@ import pyochain as pc
 import typer
 from rich.console import Console
 from rich.panel import Panel
+from rich.text import Text
 
 from ._blocks import parse_markdown
 
@@ -62,7 +63,7 @@ def run(
             help="Keep the temporary test files for debugging purposes",
         ),
     ] = False,
-) -> pc.Result[str, str]:
+) -> pc.Result[Text, Text]:
     """Run all doctests in stub files (.pyi) or markdown files (.md).
 
     This will discover and execute their doctests using pytest with dynamically generated .py files.
@@ -81,10 +82,15 @@ def run(
 
 
 def _header(path: Path) -> None:
+    content = (
+        Text()
+        .append(Text("Doctester", style="bold cyan"))
+        .append("\nRunning tests in: ")
+        .append(path.absolute().as_posix(), style="yellow")
+    )
     return console.print(
         Panel.fit(
-            f"[bold cyan]Doctester[/bold cyan]\n"
-            f"Running tests in: [yellow]{path.absolute()}[/yellow]",
+            content,
             border_style="cyan",
         )
     )
@@ -93,49 +99,56 @@ def _header(path: Path) -> None:
 @contextmanager
 def _temp_test_dir(
     *, keep: bool = False
-) -> Generator[pc.Result[Path, str], None, None]:
-    def _print_info(message: str) -> None:
-        console.print(f"[cyan]i[/cyan] {message}")
+) -> Generator[pc.Result[Path, Text], None, None]:
+    def _print_info(message: Text) -> None:
+        text = Text("i ", style="cyan").append(message)
+        console.print(text)
 
     try:
         if TEMP_DIR.exists():
             shutil.rmtree(TEMP_DIR)
         TEMP_DIR.mkdir()
-        _print_info(f"Using temp directory: {TEMP_DIR.absolute()}")
+        _print_info(Text(f"Using temp directory: {TEMP_DIR.absolute()}", style="cyan"))
         yield pc.Ok(TEMP_DIR)
     except (OSError, PermissionError) as e:
-        yield pc.Err(f"Failed to create temp directory: {e}")
+        txt = Text("✗ Failed to create temp directory:\n", style="bold red").append(
+            f" {e}"
+        )
+        yield pc.Err(txt)
     finally:
         if not keep and TEMP_DIR.exists():
             shutil.rmtree(TEMP_DIR)
-            _print_info("Cleaned up temp directory.")
+            _print_info(Text("Cleaned up temp directory.", style="cyan"))
         elif keep:
-            _print_info(
-                f"[yellow]Debug mode:[/yellow] Kept temp directory at {TEMP_DIR.absolute()}"
+            text = Text("Debug mode:", style="yellow").append(
+                f" Kept temp directory at {TEMP_DIR.absolute()}"
             )
+            _print_info(text)
 
 
-def _execute_tests(temp_dir: Path, test_file: Path) -> pc.Result[str, str]:
+def _execute_tests(temp_dir: Path, test_file: Path) -> pc.Result[Text, Text]:
     return (
         pc.Option.if_true(test_file, predicate=test_file.exists)
-        .ok_or(f"[bold red]✗ Error:[/bold red] Path '{test_file}' not found.")
+        .ok_or(
+            Text()
+            .append(Text("\u2717 Error:", style="bold red"))
+            .append(f" Path '{test_file}' not found.")
+        )
+        .inspect_err(console.print)
         .and_then(
             lambda path: _get_test_files(path)
             .filter_map(lambda file: _generate_test_file(file, temp_dir))
             .collect()
-            .ok_or("[yellow]Warning:[/yellow] No doctests found in stub files.")
-            .map(lambda path_map: _run_tests(temp_dir, path_map))
-            .and_then(_check_status)
+            .ok_or(
+                Text("Warning:", style="yellow").append(
+                    " No doctests found in stub files."
+                )
+            )
+            .and_then(lambda path_map: _run_tests(temp_dir, path_map))
             .inspect(console.print)
             .inspect_err(console.print)
         )
     )
-
-
-def _check_status(exit_code: int) -> pc.Result[str, str]:
-    if exit_code != 0:
-        return pc.Err(f"[bold red]✗ Tests failed[/bold red] with exit code {exit_code}")
-    return pc.Ok("[bold green]✓ All tests passed![/bold green]")
 
 
 def _should_ignore(p: Path, root: Path) -> bool:
@@ -187,7 +200,25 @@ def _get_blocks(file: Path) -> pc.Iter[str]:
             return pc.Iter[str].empty()
 
 
-def _run_tests(temp_dir: Path, path_map: pc.Seq[tuple[Path, Path]]) -> int:
+def _run_tests(
+    temp_dir: Path, path_map: pc.Seq[tuple[Path, Path]]
+) -> pc.Result[Text, Text]:
+    def _remap_if_some(out: str) -> pc.Option[None]:
+        return (
+            pc.Option.if_some(out)
+            .map(
+                lambda text: path_map.iter()
+                .fold(
+                    text,
+                    lambda acc, paths: acc.replace(
+                        paths[0].as_posix(), paths[1].as_posix()
+                    ),
+                )
+                .replace(temp_dir.as_posix(), "")
+            )
+            .map(lambda s: console.print(s))
+        )
+
     result = subprocess.run(
         args=(
             "pytest",
@@ -199,30 +230,22 @@ def _run_tests(temp_dir: Path, path_map: pc.Seq[tuple[Path, Path]]) -> int:
         capture_output=True,
         text=True,
     )
+    _remap_if_some(result.stdout)
+    _remap_if_some(result.stderr)
 
-    stdout = _remap_paths(result.stdout, path_map, temp_dir)
-    stderr = _remap_paths(result.stderr, path_map, temp_dir)
-
-    console.print(stdout, end="")
-    if stderr:
-        console.print(stderr, style="red", end="")
-
-    return result.returncode
+    return _check_status(result.returncode)
 
 
-def _remap_paths(text: str, path_map: pc.Seq[tuple[Path, Path]], temp_dir: Path) -> str:
-    """Replace temporary file paths with original source file paths."""
-    return (
-        pc.Iter(path_map)
-        .fold(
-            text,
-            lambda acc, paths: acc.replace(
-                paths[0].as_posix(), paths[1].as_posix()
-            ).replace(str(paths[0]), str(paths[1])),
-        )
-        .replace(temp_dir.as_posix(), "")
-        .replace(str(temp_dir), "")
-    )
+def _check_status(exit_code: int) -> pc.Result[Text, Text]:
+    match exit_code:
+        case 0:
+            msg = Text("✓ All tests passed!", style="bold green")
+            return pc.Ok(msg)
+        case _:
+            msg = Text("✗ Tests failed", style="bold red").append(
+                f" with exit code {exit_code}"
+            )
+            return pc.Err(msg)
 
 
 if __name__ == "__main__":

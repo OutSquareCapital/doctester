@@ -82,7 +82,7 @@ def test_failures_pyi_should_fail(failures_dir: Path) -> None:
     result = st.run(failures_pyi)
 
     assert result.is_err(), "failures.pyi should fail but passed"
-    error_msg = result.unwrap_err().lower()
+    error_msg = result.unwrap_err().plain.lower()
     assert "failed" in error_msg or "error" in error_msg
     assert not st.TEMP_DIR.exists(), "Temp directory should be cleaned up"
 
@@ -93,7 +93,7 @@ def test_failures_md_should_fail(failures_dir: Path) -> None:
     result = st.run(failures_md)
 
     assert result.is_err(), "failures.md should fail but passed"
-    assert "failed" in result.unwrap_err().lower()
+    assert "failed" in result.unwrap_err().plain.lower()
 
 
 def test_nonexistent_path() -> None:

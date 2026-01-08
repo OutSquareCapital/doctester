@@ -9,10 +9,8 @@ This project uses `pytest` for testing. The test suite covers unit tests and int
 ### Quick Start
 
 ```bash
-# Run all tests with pytest
 uv run pytest tests/ -v
-# Run stubtester on his own tests
-uv run stubtester tests/success/
+uv run stubtester tests/examples/success/
 ```
 
 #### Auto-testing stubteser

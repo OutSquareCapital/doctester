@@ -4,7 +4,7 @@
         "pytest>=9.0.2",
         "rich>=14.2.0",
         "typer>=0.20.0",
-    ]
+]
     description = "Simple tool to run doctests from Python stub files (.pyi)."
     name = "stubtester"
     readme = "README.md"

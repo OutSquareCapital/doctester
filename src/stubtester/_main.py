@@ -1,3 +1,4 @@
+import re
 import shutil
 import subprocess
 from collections.abc import Generator
@@ -223,14 +224,22 @@ def _run_tests(
 
 
 def _remap_if_some(out: str, path_map: pc.Seq[tuple[Path, Path]]) -> pc.Option[None]:
+    """Remap temporary file paths to source file paths in output."""
+
+    def _remap_paths(acc: str, temp: Path, source: Path) -> str:
+        return re.sub(
+            f"<doctest {re.escape(temp.stem)}\\.",
+            f"<doctest {source.stem}.",
+            acc.replace(temp.as_posix(), source.as_posix()).replace(
+                str(temp), str(source)
+            ),
+        )
+
     return (
         pc.Option.if_some(out)
         .map(
             lambda text: path_map.iter().fold(
-                text,
-                lambda acc, paths: acc.replace(
-                    paths[0].as_posix(), paths[1].as_posix()
-                ),
+                text, lambda acc, paths: _remap_paths(acc, *paths)
             )
         )
         .map(lambda s: console.print(s))

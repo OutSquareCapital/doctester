@@ -21,29 +21,31 @@ app = typer.Typer(
     help="Run doctests from stub files (.pyi) using pytest --doctest-modules",
 )
 TEMP_DIR = Path("doctests_temp")
-IGNORED_PATHS: set[str] = {
-    ".venv",
-    "venv",
-    ".env",
-    "env",
-    ".git",
-    ".github",
-    ".hg",
-    "node_modules",
-    "__pycache__",
-    ".pytest_cache",
-    ".mypy_cache",
-    ".ruff_cache",
-    ".tox",
-    ".coverage",
-    "build",
-    "dist",
-    ".eggs",
-    ".egg-info",
-    ".idea",
-    ".vscode",
-    ".DS_Store",
-}
+IGNORED_PATHS = pc.Set[str](
+    (
+        ".venv",
+        "venv",
+        ".env",
+        "env",
+        ".git",
+        ".github",
+        ".hg",
+        "node_modules",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".tox",
+        ".coverage",
+        "build",
+        "dist",
+        ".eggs",
+        ".egg-info",
+        ".idea",
+        ".vscode",
+        ".DS_Store",
+    )
+)
 """Common directory and file names to ignore when searching for stub files."""
 
 
@@ -128,7 +130,7 @@ def _temp_test_dir(
 
 def _execute_tests(temp_dir: Path, test_file: Path) -> pc.Result[Text, Text]:
     return (
-        pc.Option.if_true(test_file, predicate=test_file.exists)
+        pc.Option.if_true(test_file, predicate=Path.exists)
         .ok_or(
             Text("\u2717 Error:", style="bold red").append(
                 f" Path '{test_file}' not found."
@@ -155,7 +157,7 @@ def _should_ignore(p: Path, root: Path) -> bool:
     """Check if path should be ignored based on common directories."""
     try:
         return pc.Iter(p.relative_to(root).parts).any(
-            lambda part: part in IGNORED_PATHS or part.endswith(".egg-info")
+            lambda part: IGNORED_PATHS.contains(part) or part.endswith(".egg-info")
         )
     except ValueError:
         return False
@@ -169,7 +171,7 @@ def _get_test_files(path: Path) -> pc.Iter[Path]:
                 case ".pyi" | ".md":
                     return pc.Iter.once(path)
                 case _:
-                    return pc.Iter[Path].empty()
+                    return pc.Iter[Path].new()
         case False:
             return (
                 pc.Iter(path.rglob("*.pyi"))
@@ -197,7 +199,7 @@ def _get_blocks(file: Path) -> pc.Iter[str]:
         case ".pyi":
             return pc.Iter.once(content)
         case _:
-            return pc.Iter[str].empty()
+            return pc.Iter[str].new()
 
 
 def _run_tests(

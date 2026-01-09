@@ -229,7 +229,7 @@ wheels = [
 
 [[package]]
 name = "pyochain"
-version = "0.6.3"
+version = "0.6.5"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -237,9 +237,9 @@ resolution-markers = [
 dependencies = [
     { name = "cytoolz", marker = "python_full_version >= '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e9/55/4127bb16e2959a477d2600c01c392594ca191375057e40e111d8cc21b819/pyochain-0.6.3.tar.gz", hash = "sha256:002b476b78d1fa34366c41b4ea19cbeee867935b0697b5fb5a23efea42c103e1", size = 48740, upload-time = "2026-01-08T21:34:10.285Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/29/3d/a7d80242c5dfdeca01148930908270ca6817504aa0646229b42c6a8902ef/pyochain-0.6.5.tar.gz", hash = "sha256:8baf3437f40a91da9ecfe449228951de2daf29d9d6d5c9cf706df650616454cd", size = 49425, upload-time = "2026-01-09T16:04:33.047Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/51/4b/6e7a8a7dd9e8dd37e849690784ed53f24010f769a7dc91aa8076e7bc5fc8/pyochain-0.6.3-py3-none-any.whl", hash = "sha256:303156f23343472dcb7a305a3e40730016d32030827cb2bf925626d17b1c155c", size = 53191, upload-time = "2026-01-08T21:34:12.129Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/32/8a92fd899569f334911b26b38b8eb8b6cb31fd1f58df140fba2b459e56bb/pyochain-0.6.5-py3-none-any.whl", hash = "sha256:f3fba8c5226c161e4888487443253e1d8310d702e5db3f0149774fef072fdeb2", size = 53817, upload-time = "2026-01-09T16:04:33.94Z" },
 ]
 
 [[package]]
@@ -320,7 +320,7 @@ version = "0.1.5"
 source = { editable = "." }
 dependencies = [
     { name = "pyochain", version = "0.5.52", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
-    { name = "pyochain", version = "0.6.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
+    { name = "pyochain", version = "0.6.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "pytest" },
     { name = "rich" },
     { name = "typer" },

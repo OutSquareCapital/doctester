@@ -151,11 +151,8 @@ def _execute_tests(temp_dir: Path, test_file: Path) -> pc.Result[Text, Text]:
                                 (f"{temp_file.stem}.{name}", offset),
                             )
                         )
-                        .into(
-                            lambda blocks: pc.Option.if_true(
-                                blocks, predicate=lambda it: it.cloned().any()
-                            )
-                        )
+                        .collect()
+                        .then_some()
                         .map(
                             lambda blocks_info: blocks_info.iter()
                             .unzip()

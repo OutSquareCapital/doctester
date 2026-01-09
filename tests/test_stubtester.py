@@ -138,14 +138,14 @@ def test_directory_with_non_test_files(tmp_path: Path) -> None:
 
 
 def test_file_with_invalid_extension(tmp_path: Path) -> None:
-    """File with invalid extension should return empty."""
+    """File with invalid extension should return error."""
     invalid_file = tmp_path.joinpath("test.txt")
     invalid_file.write_text(">>> 1 + 1\n2")
 
     result = st.run(invalid_file)
 
     assert result.is_err()
-    assert "No doctests found" in result.unwrap_err()
+    assert "Unsupported file type:" in result.unwrap_err()
 
 
 def test_keep_flag_preserves_temp_dir(success_dir: Path) -> None:

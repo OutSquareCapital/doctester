@@ -139,55 +139,61 @@ def _execute_tests(temp_dir: Path, test_file: Path) -> pc.Result[Text, Text]:
         )
         .and_then(
             lambda path: _get_test_files(path)
-            .map_err(console.print)
-            .unwrap()
-            .map(lambda p: (p, temp_dir.joinpath(f"{p.stem}_test.py")))
-            .filter_map_star(
-                lambda file, temp_file: _get_blocks(file)
-                .map_star(
-                    lambda code, name, offset: (
-                        code,
-                        (f"{temp_file.stem}.{name}", offset),
-                    )
-                )
-                .collect()
-                .then_some()
-                .map(
-                    lambda blocks_info: blocks_info.iter()
-                    .unzip()
-                    .inspect(
-                        lambda unzipped: temp_file.write_text(
-                            unzipped.left.join("\n"), encoding="utf-8"
-                        )
-                    )
-                    .right
-                )
-                .map(lambda offsets: ((temp_file, file), offsets))
-            )
-            .collect()
-            .ok_or(
-                Text("Warning:", style="yellow").append(
-                    " No doctests found in stub files."
-                )
-            )
+            .inspect_err(console.print)
             .and_then(
-                lambda data: (
-                    data.iter()
-                    .unzip()
-                    .into(
-                        lambda unzipped: _run_tests(
-                            temp_dir,
-                            unzipped.left.collect(),
-                            unzipped.right.flatten().collect(pc.Dict),
+                lambda files: (
+                    files.map(lambda p: (p, temp_dir.joinpath(f"{p.stem}_test.py")))
+                    .filter_map_star(
+                        lambda file, temp_file: _get_blocks(file)
+                        .map_star(
+                            lambda code, name, offset: (
+                                code,
+                                (f"{temp_file.stem}.{name}", offset),
+                            )
+                        )
+                        .into(
+                            lambda blocks: pc.Option.if_true(
+                                blocks, predicate=lambda it: it.cloned().any()
+                            )
+                        )
+                        .map(
+                            lambda blocks_info: blocks_info.iter()
+                            .unzip()
+                            .inspect(
+                                lambda unzipped: temp_file.write_text(
+                                    unzipped.left.join("\n"), encoding="utf-8"
+                                )
+                            )
+                            .right
+                        )
+                        .map(lambda offsets: ((temp_file, file), offsets))
+                    )
+                    .collect()
+                    .ok_or(
+                        Text("Warning:", style="yellow").append(
+                            " No doctests found in stub files."
                         )
                     )
-                    .into(
-                        lambda res: pc.Option.if_true(
-                            res.unwrap().returncode, predicate=lambda code: code == 0
-                        )
-                        .ok_or(Text("✗ Tests failed", style="bold red"))
-                        .map(lambda _: Text("✓ All tests passed!", style="bold green"))
+                )
+            )
+        )
+        .and_then(
+            lambda data: (
+                data.iter()
+                .unzip()
+                .into(
+                    lambda unzipped: _run_tests(
+                        temp_dir,
+                        unzipped.left.collect(),
+                        unzipped.right.flatten().collect(pc.Dict),
                     )
+                )
+                .into(
+                    lambda res: pc.Option.if_true(
+                        res.unwrap().returncode, predicate=lambda code: code == 0
+                    )
+                    .ok_or(Text("✗ Tests failed", style="bold red"))
+                    .map(lambda _: Text("✓ All tests passed!", style="bold green"))
                 )
             )
         )

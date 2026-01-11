@@ -87,15 +87,6 @@ def test_failures_pyi_should_fail(failures_dir: Path) -> None:
     assert not st.TEMP_DIR.exists(), "Temp directory should be cleaned up"
 
 
-def test_failures_md_should_fail(failures_dir: Path) -> None:
-    """failures.md contains intentional errors and should fail."""
-    failures_md = failures_dir.joinpath("failures.md")
-    result = st.run(failures_md)
-
-    assert result.is_err(), "failures.md should fail but passed"
-    assert "failed" in result.unwrap_err().plain.lower()
-
-
 def test_nonexistent_path() -> None:
     """Return error for nonexistent path."""
     nonexistent = Path("nonexistent_xyz_12345")

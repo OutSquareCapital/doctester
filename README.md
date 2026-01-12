@@ -1,100 +1,100 @@
-﻿# stubtester
+﻿# pytest-stubtester
 
-A tool that extracts doctests from `.pyi` stub files and runs them with `pytest --doctest-modules`.
+A pytest plugin that discovers and runs doctests from `.pyi` stub files.
 
 ## 🎯 Use Cases
 
-This tool is designed for:
+This plugin is designed for:
 
 - **Stub file testing**: Validate examples in `.pyi` type stub files
 - **Non-Python codebases**: Test doctests for Cython/PyO3/Rust extensions where the implementation isn't in Python
 - **Third-party stubs**: Verify examples in type stubs for external libraries
 
-> **Note**: For regular Python code, always write doctests directly in your `.py` implementation files, even if you have separate `.pyi` stub files.
+> **Note**: For regular Python code, always write doctests directly in your `.py` implementation files.
 
 ## 🎯 How it Works
 
-1. **Discovers** `.pyi` files in your project
-2. **Extracts** doctests from docstrings
-3. **Generates** temporary test files with proper source mapping
-4. **Executes** tests with `pytest --doctest-modules`
-5. **Reports** failures with accurate line numbers pointing to source files
-6. **Cleans up** temporary files automatically
+1. **Integrates** with pytest's collection phase
+2. **Discovers** `.pyi` files automatically
+3. **Parses** doctests from docstrings using Python's doctest module
+4. **Creates** DoctestItem instances for pytest execution
+5. **Reports** failures with standard pytest output
 
 ## 📦 Installation
 
 ```bash
-uv add git+https://github.com/OutSquareCapital/stubtester.git
+uv add pytest-stubtester
+# Or with pip
+pip install pytest-stubtester
 ```
 
 ## 🚀 Usage
 
-### CLI
+### Basic Usage
 
 ```bash
-# Run on all .pyi files in a directory
-uv run stubtester path/to/your/package
+# Enable the plugin with --pyi-enabled flag
+pytest tests/ --pyi-enabled -v
 
-# Run on a single file
-uv run stubtester path/to/file.pyi
-
-# Keep temporary files for debugging
-uv run stubtester path/to/file.pyi --keep
+# Test specific .pyi files
+pytest tests/my_stubs.pyi --pyi-enabled -v
 ```
 
-### Programmatic
+### Auto-enable in conftest.py
+
+Add to your `conftest.py` to enable automatically:
 
 ```python
-from pathlib import Path
-import stubtester
-
-# Test a directory (discovers all .pyi and .md files)
-result = stubtester.run(Path("my_package"))
-
-# Test a single file
-result = stubtester.run(Path("my_package/module.pyi"))
-
-# Keep temporary files for debugging
-result = stubtester.run(Path("my_package"), keep=True)
-
-# Handle results
-match result:
-    case stubtester.Ok(message):
-        print(f"✓ {message}")
-    case stubtester.Err(error):
-        print(f"✗ {error}")
+def pytest_configure(config: object) -> None:
+    """Enable pytest-stubtester plugin automatically."""
+    config.option.pyi_enabled = True  # type: ignore[attr-defined]
 ```
 
-## 📝 Examples
+### Configure in pytest.ini / pyproject.toml
 
-### Stub Files (`.pyi`)
+**pytest.ini:**
 
-Your stub file might look like this:
+```ini
+[pytest]
+addopts = --pyi-enabled
+```
 
-```text
+**pyproject.toml:**
+
+```toml
+[tool.pytest.ini_options]
+addopts = ["--pyi-enabled"]
+```
+
+## 📝 Example
+
+### Stub File (`.pyi`)
+
+```python
 # math_helpers.pyi
 def add(a: int, b: int) -> int:
     """Add two numbers.
     
+    ```python
     >>> add(2, 3)
     5
     >>> add(-1, 1)
     0
+    
+    ```
     """
 ```
 
-When run with `stubtester`, doctests are extracted and executed.
+Run pytest:
 
-## 🛠️ Options
-
-- `--keep`: Keep temporary test files for debugging (stored in `doctests_temp/`)
-- `--help`: Display help information
+```bash
+pytest math_helpers.pyi --pyi-enabled -v
+```
 
 ## 🤝 Contributing
 
 Contributions welcome! Please ensure all tests pass:
 
 ```bash
-uv run pytest tests/
-uv run stubtester tests/examples/success/ # This project verifies itself!
+uv run pytest tests/ --pyi-enabled -v
 ```

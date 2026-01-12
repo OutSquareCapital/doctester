@@ -1,18 +1,19 @@
 [project]
-    dependencies = [
-        "pyochain>=0.5.52",
-        "pytest>=9.0.2",
-        "rich>=14.2.0",
-        "typer>=0.20.0",
-    ]
-    description = "Simple tool to run doctests from Python stub files (.pyi)."
-    name = "stubtester"
-    readme = "README.md"
+    dependencies    = ["pyochain>=0.5.52", "pytest>=9.0.2"]
+    description     = "Pytest plugin for discovering and running doctests from Python stub files (.pyi)."
+    name            = "pytest-stubtester"
+    readme          = "README.md"
     requires-python = ">=3.12"
-    version = "0.1.6"
+    version         = "0.3.0"
 
-    [project.scripts]
-        stubtester = "stubtester.__main__:app"
+    [project.entry-points.pytest11]
+        stubtester = "pytest_stubtester.plugin"
+
+[tool.uv]
+    package = true
+
+    [tool.uv.sources]
+        pytest_stubtester = { workspace = true }
 
 [build-system]
     build-backend = "uv_build"
@@ -43,6 +44,6 @@
         docstring-code-format = true
 
 [dependency-groups]
-    dev = ["ruff>=0.14.9"]
+    dev = ["pyochain>=0.5.52", "pytest>=9.0.2", "ruff>=0.14.9"]
     [tool.ruff.lint.pydocstyle]
         convention = "google"

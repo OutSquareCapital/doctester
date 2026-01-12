@@ -1,155 +1,197 @@
-"""Tests for the CLI interface."""
+"""Tests for the pytest-stubtester plugin."""
 
 from pathlib import Path
 
 import pyochain as pc
 import pytest
-from typer.testing import CliRunner
 
-import stubtester as st
-from stubtester import app
-
-runner = CliRunner()
+import pytest_stubtester
 
 
-@pytest.fixture
-def test_examples_dir() -> Path:
-    """Path to the test examples directory."""
-    return Path("tests", "examples")
+def test_plugin_is_registered(pytestconfig: pytest.Config) -> None:
+    """Plugin should be registered with pytest."""
+    plugin = pytestconfig.pluginmanager.get_plugin("stubtester")
+    assert plugin is not None
 
 
-@pytest.fixture
-def failures_dir(test_examples_dir: Path) -> Path:
-    """Path to the failures directory."""
-    return test_examples_dir.joinpath("failures")
+def test_pyi_enabled_option_exists(pytestconfig: pytest.Config) -> None:
+    """--pyi-enabled option should be available."""
+    assert hasattr(pytestconfig.option, "pyi_enabled")
 
 
-@pytest.fixture
-def success_dir(test_examples_dir: Path) -> Path:
-    """Path to the success directory."""
-    return test_examples_dir.joinpath("success")
+def test_plugin_exports() -> None:
+    """Plugin should export the expected items."""
+    assert hasattr(pytest_stubtester, "PyiModule")
+    assert hasattr(pytest_stubtester, "pytest_addoption")
+    assert hasattr(pytest_stubtester, "pytest_collect_file")
+    assert hasattr(pytest_stubtester, "__version__")
 
 
-def _get_test_files(directory: Path, pattern: str, exclude: set[str]) -> pc.Seq[Path]:
-    """Get test files matching pattern, excluding specified stems."""
-    return (
-        pc.Iter(directory.glob(pattern)).filter(lambda f: f.stem not in exclude).sort()
+def test_pyi_module_class_exists() -> None:
+    """PyiModule class should exist and inherit from pytest.Module."""
+    assert issubclass(pytest_stubtester.PyiModule, pytest.Module)
+
+
+def test_plugin_disabled_by_default(pytester: pytest.Pytester) -> None:
+    """Plugin should not collect .pyi files when disabled."""
+    pytester.makefile(
+        ".pyi",
+        test_sample="""
+def add(a: int, b: int) -> int:
+    \"\"\"Add two numbers.
+
+    >>> 1 + 2
+    3
+    \"\"\"
+""",
     )
 
-
-def test_help_command() -> None:
-    """Help command should work."""
-    result = runner.invoke(app, ["--help"])
-
-    assert result.exit_code == 0
-    assert "Run all doctests in stub files" in result.stdout
+    result = pytester.runpytest("-v")
+    # Should not collect the .pyi file when plugin disabled
+    result.stdout.no_fnmatch_line("*test_sample.pyi*")
 
 
-@pytest.mark.parametrize(
-    "test_file",
-    _get_test_files(Path("tests", "examples", "success"), "*.pyi", exclude=set()),
-    ids=lambda p: p.name,
-)
-def test_passing_pyi_files(test_file: Path) -> None:
-    """All .pyi files in success/ should pass."""
-    result = st.run(test_file)
+def test_plugin_enabled_collects_pyi(pytester: pytest.Pytester) -> None:
+    """Plugin should collect .pyi files when enabled."""
+    pytester.makefile(
+        ".pyi",
+        test_sample="""
+def add(a: int, b: int) -> int:
+    \"\"\"Add two numbers.
 
-    assert result.is_ok(), f"{test_file.name} failed: {result.unwrap_err()}"
+    >>> 1 + 2
+    3
+    \"\"\"
+""",
+    )
 
-
-@pytest.mark.parametrize(
-    "test_file",
-    _get_test_files(Path("tests", "examples", "success"), "*.md", exclude=set()),
-    ids=lambda p: p.name,
-)
-def test_passing_md_files(test_file: Path) -> None:
-    """All .md files in success/ should pass."""
-    result = st.run(test_file)
-
-    assert result.is_ok(), f"{test_file.name} failed: {result.unwrap_err()}"
+    result = pytester.runpytest("--pyi-enabled", "-v")
+    # Should collect and pass the doctest
+    assert result.ret == 0
+    result.stdout.fnmatch_lines(["*test_sample.pyi*PASSED*"])
 
 
-def test_success_directory_all_pass(success_dir: Path) -> None:
-    """All tests in success/ directory should pass."""
-    result = st.run(success_dir)
+def test_passing_doctests(pytester: pytest.Pytester) -> None:
+    """Valid doctests should pass."""
+    pytester.makefile(
+        ".pyi",
+        passing="""
+def multiply(a: int, b: int) -> int:
+    \"\"\"Multiply two numbers.
 
-    assert result.is_ok(), f"Success directory failed: {result.unwrap_err()}"
+    >>> 3 * 4
+    12
+    >>> 0 * 100
+    0
+    \"\"\"
+""",
+    )
 
-
-def test_failures_pyi_should_fail(failures_dir: Path) -> None:
-    """failures.pyi contains intentional errors and should fail."""
-    failures_pyi = failures_dir.joinpath("failures.pyi")
-    result = st.run(failures_pyi)
-
-    assert result.is_err(), "failures.pyi should fail but passed"
-    error_msg = result.unwrap_err().plain.lower()
-    assert "failed" in error_msg or "error" in error_msg
-    assert not st.TEMP_DIR.exists(), "Temp directory should be cleaned up"
-
-
-def test_nonexistent_path() -> None:
-    """Return error for nonexistent path."""
-    nonexistent = Path("nonexistent_xyz_12345")
-    result = st.run(nonexistent)
-
-    assert result.is_err(), "Should return error for nonexistent path"
-    assert "not found" in result.unwrap_err()
+    result = pytester.runpytest("--pyi-enabled", "-v")
+    assert result.ret == 0
+    result.stdout.fnmatch_lines(["*passing.pyi*PASSED*"])
 
 
-def test_nonexistent_file_with_valid_extension() -> None:
-    """Return error for nonexistent file even with valid extension."""
-    result = st.run(Path("does_not_exist.pyi"))
+def test_failing_doctests(pytester: pytest.Pytester) -> None:
+    """Invalid doctests should fail."""
+    pytester.makefile(
+        ".pyi",
+        failing="""
+def add(a: int, b: int) -> int:
+    \"\"\"Add two numbers.
 
-    assert result.is_err()
-    assert "not found" in result.unwrap_err()
+    >>> 2 + 2
+    5
+    \"\"\"
+""",
+    )
 
-
-def test_empty_directory(tmp_path: Path) -> None:
-    """Return warning when no test files found."""
-    empty_dir = tmp_path.joinpath("empty")
-    empty_dir.mkdir()
-
-    result = st.run(empty_dir)
-
-    assert result.is_err(), "Empty directory should return error"
-    assert "No doctests found" in result.unwrap_err()
-
-
-def test_directory_with_non_test_files(tmp_path: Path) -> None:
-    """Directory with only non-.pyi/.md files should return warning."""
-    test_dir = tmp_path.joinpath("no_tests")
-    test_dir.mkdir()
-    test_dir.joinpath("readme.txt").write_text("Not a test file")
-    test_dir.joinpath("script.py").write_text("# Not a stub file")
-
-    result = st.run(test_dir)
-
-    assert result.is_err()
-    assert "No doctests found" in result.unwrap_err()
+    result = pytester.runpytest("--pyi-enabled", "-v")
+    assert result.ret != 0
+    result.stdout.fnmatch_lines(["*failing.pyi*FAILED*"])
 
 
-def test_file_with_invalid_extension(tmp_path: Path) -> None:
-    """File with invalid extension should return error."""
-    invalid_file = tmp_path.joinpath("test.txt")
-    invalid_file.write_text(">>> 1 + 1\n2")
+def test_multiple_doctests_in_file(pytester: pytest.Pytester) -> None:
+    """Multiple doctests in one file should all be collected."""
+    pytester.makefile(
+        ".pyi",
+        multi="""
+def add(a: int, b: int) -> int:
+    \"\"\"Add.
 
-    result = st.run(invalid_file)
+    >>> 1 + 1
+    2
+    \"\"\"
 
-    assert result.is_err()
-    assert "Unsupported file type:" in result.unwrap_err()
+def sub(a: int, b: int) -> int:
+    \"\"\"Subtract.
+
+    >>> 5 - 3
+    2
+    \"\"\"
+""",
+    )
+
+    result = pytester.runpytest("--pyi-enabled", "-v")
+    assert result.ret == 0
+    result.stdout.fnmatch_lines(["*multi.pyi*PASSED*"])
 
 
-def test_keep_flag_preserves_temp_dir(success_dir: Path) -> None:
-    """--keep flag should preserve temporary directory."""
-    clean_pyi = success_dir.joinpath("clean.pyi")
+def test_non_pyi_files_ignored(pytester: pytest.Pytester) -> None:
+    """Non-.pyi files should be ignored even with plugin enabled."""
+    pytester.makefile(
+        ".txt",
+        readme="""
+>>> 1 + 1
+2
+""",
+    )
 
-    try:
-        result = st.run(clean_pyi, keep=True)
+    result = pytester.runpytest("--pyi-enabled", "-v")
+    # Should not collect .txt file
+    result.stdout.no_fnmatch_line("*readme.txt*")
 
-        assert result.is_ok()
-        assert st.TEMP_DIR.exists(), "Temp directory should be preserved with keep=True"
-    finally:
-        if st.TEMP_DIR.exists():
-            import shutil
 
-            shutil.rmtree(st.TEMP_DIR)
+def test_empty_pyi_file(pytester: pytest.Pytester) -> None:
+    """Empty .pyi file should not cause errors."""
+    pytester.makefile(".pyi", empty="")
+
+    result = pytester.runpytest("--pyi-enabled", "-v")
+    # Should complete without errors, just no tests collected from this file
+    assert "error" not in result.stdout.str().lower()
+
+
+def test_pyi_file_without_doctests(pytester: pytest.Pytester) -> None:
+    """.pyi file without doctests should not collect any tests."""
+    pytester.makefile(
+        ".pyi",
+        no_doctests="""
+def function_without_docstring(x: int) -> int: ...
+
+def function_with_docstring_no_tests(x: int) -> int:
+    \"\"\"This function has no doctests.\"\"\"
+""",
+    )
+
+    result = pytester.runpytest("--pyi-enabled", "-v", "--collect-only")
+    # File with no doctests returns exit code 5 (NO_TESTS_COLLECTED)
+    no_tests_collected = 5
+    assert result.ret == no_tests_collected
+
+
+def test_real_success_examples() -> None:
+    """Real example files in tests/examples/success should exist."""
+    success_dir = Path("tests", "examples", "success")
+    assert success_dir.exists()
+
+    pyi_files = pc.Iter(success_dir.glob("*.pyi")).collect()
+    assert pyi_files.length() > 0, "Should have .pyi test files in success/"
+
+
+def test_real_failure_examples() -> None:
+    """Real example files in tests/examples/failures should exist."""
+    failures_dir = Path("tests", "examples", "failures")
+    assert failures_dir.exists()
+
+    pyi_files = pc.Iter(failures_dir.glob("*.pyi")).collect()
+    assert pyi_files.length() > 0, "Should have .pyi test files in failures/"

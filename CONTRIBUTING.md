@@ -4,23 +4,24 @@ Thank you for your interest in contributing! This guide will help you run and ad
 
 ## 🧪 Running Tests
 
-This project uses `pytest` for testing. The test suite covers unit tests and integration tests for stubtester.
+This project uses `pytest` for testing. The test suite covers unit tests and integration tests for the pytest-stubtester plugin.
 
 ### Quick Start
 
 ```bash
-uv run pytest tests/ -v
-uv run stubtester tests/examples/success/
+uv run pytest tests/test_stubtester.py --pyi-enabled -v
+uv run pytest tests/examples/success/ --pyi-enabled -v
 ```
 
-#### Auto-testing stubteser
+#### Test structure
 
-When running with stubtester itself, take note of the following structure:
+- [`tests/examples`](tests/examples) contains example `.pyi` files used for testing.
+  - [`tests/examples/success`](tests/examples/success) contains files with valid doctests that should pass.
+  - [`tests/examples/failures`](tests/examples/failures) contains files with intentional errors that should fail.
 
-- [`examples`](tests/examples) contains the files to test.
+- [`tests/test_stubtester.py`](tests/test_stubtester.py) contains unit tests for the plugin itself.
 
-- [`examples/success`](tests\examples\success) contains files that should pass without errors.
-- [`examples/failures`](tests\examples\failures) contains files that should produce errors.
+**Note:** The `failures.pyi` file is **expected to fail** - it contains intentional errors to verify the plugin correctly detects failures.
 
 ## 📝 Code Style
 

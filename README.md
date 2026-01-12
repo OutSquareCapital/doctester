@@ -23,9 +23,7 @@ This plugin is designed for:
 ## 📦 Installation
 
 ```bash
-uv add pytest-stubtester
-# Or with pip
-pip install pytest-stubtester
+uv add git+https://github.com/OutSquareCapital/stubtester.git
 ```
 
 ## 🚀 Usage

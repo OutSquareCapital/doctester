@@ -23,7 +23,7 @@ This plugin is designed for:
 ## 📦 Installation
 
 ```bash
-uv add git+https://github.com/OutSquareCapital/stubtester.git
+uv add git+https://github.com/OutSquareCapital/pytest-stubtester.git
 ```
 
 ## 🚀 Usage

@@ -96,5 +96,6 @@ pytest math_helpers.pyi --pyi-enabled -v
 Contributions welcome! Please ensure all tests pass:
 
 ```bash
-uv run pytest tests/ --pyi-enabled -v
+uv run pytest tests/test_stubtester.py --pyi-enabled -v
+uv run pytest tests/examples/success/ --pyi-enabled -v
 ```

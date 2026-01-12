@@ -45,10 +45,8 @@ def add(a: int, b: int) -> int:
     \"\"\"
 """,
     )
-
-    result = pytester.runpytest("-v")
     # Should not collect the .pyi file when plugin disabled
-    result.stdout.no_fnmatch_line("*test_sample.pyi*")
+    pytester.runpytest("-v").stdout.no_fnmatch_line("*test_sample.pyi*")
 
 
 def test_plugin_enabled_collects_pyi(pytester: pytest.Pytester) -> None:
@@ -184,8 +182,9 @@ def test_real_success_examples() -> None:
     success_dir = Path("tests", "examples", "success")
     assert success_dir.exists()
 
-    pyi_files = pc.Iter(success_dir.glob("*.pyi")).collect()
-    assert pyi_files.length() > 0, "Should have .pyi test files in success/"
+    assert pc.Iter(success_dir.glob("*.pyi")).length() > 0, (
+        "Should have .pyi test files in success/"
+    )
 
 
 def test_real_failure_examples() -> None:
@@ -193,5 +192,6 @@ def test_real_failure_examples() -> None:
     failures_dir = Path("tests", "examples", "failures")
     assert failures_dir.exists()
 
-    pyi_files = pc.Iter(failures_dir.glob("*.pyi")).collect()
-    assert pyi_files.length() > 0, "Should have .pyi test files in failures/"
+    assert pc.Iter(failures_dir.glob("*.pyi")).length() > 0, (
+        "Should have .pyi test files in failures/"
+    )

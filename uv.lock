@@ -196,7 +196,7 @@ wheels = [
 
 [[package]]
 name = "pyochain"
-version = "0.7.0"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -204,9 +204,13 @@ resolution-markers = [
 dependencies = [
     { name = "cytoolz", marker = "python_full_version >= '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/44/5c/5759e53f518c27a7f8135c921defccfc2cad0469d77ad38bece9371d09fe/pyochain-0.7.0.tar.gz", hash = "sha256:e1a4dfc0f128423a9dadab1cf59a6f1684f0f9cb9b12154952a14bab17172233", size = 53756, upload-time = "2026-01-12T16:08:15.598Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/dd/c4bbf7493312dd66ec3770a29a563eead348ba169834194c59795e49f916/pyochain-0.9.0.tar.gz", hash = "sha256:557fd0310cf2c0242e1d85bd95a0222eb2f74926a262d0bcdcdfac975836dbe0", size = 59010, upload-time = "2026-01-14T20:01:19.374Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8b/3a/34a71931d042718472029c705dca1dc6ad7889ded8b5690282681f0813ae/pyochain-0.7.0-py3-none-any.whl", hash = "sha256:bec855a7c3aaafa34b78e6fc8e3b4e5eec2f68c03b2114743f1bbed9e1a2511d", size = 58247, upload-time = "2026-01-12T16:08:16.454Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/06/636d82e51c852b23e666ad41dabd295722eea353686d8a8df7632caea31c/pyochain-0.9.0-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:cef19ceee45860c105e54ec0fdd7e612c15246bae7f6dae8c90c1abe05a9236e", size = 335634, upload-time = "2026-01-14T20:01:18.06Z" },
+    { url = "https://files.pythonhosted.org/packages/31/7f/756cade0205fd9167f5dddbefc27f1411ee7a9377987643e4bb8eb057e4c/pyochain-0.9.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:1f05e1859319cd24a0938f4dec976bd23287a8014f56219ee08283682a956a72", size = 326257, upload-time = "2026-01-14T20:01:16.961Z" },
+    { url = "https://files.pythonhosted.org/packages/50/7b/aff89fda883add24f6c3150823d3750295b7635106ed33aa0d5aa80c7a1a/pyochain-0.9.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6c057f2b0610b9c16f8a4ba4e0f37207230cc772aa107ed05d87cd63bbeaf552", size = 352861, upload-time = "2026-01-14T20:01:14.403Z" },
+    { url = "https://files.pythonhosted.org/packages/40/3a/2539dda65ea5452bb7ebc540bb04d9b3b155dd36c7f75073459854317718/pyochain-0.9.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ffc06d9b9ed07dd8284f21cc800e6815caef807f01e4eeebca941dd0083ace96", size = 350740, upload-time = "2026-01-14T20:01:15.884Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/e4/284c07378f2412d75f8217562ec5d50a75130d6d86444f0623901cda653b/pyochain-0.9.0-cp313-cp313-win_amd64.whl", hash = "sha256:0f64689cdafd26840e1d8321328590a01ed6f0f4f7bae5a5495eecf4d425d248", size = 231960, upload-time = "2026-01-14T20:01:20.438Z" },
 ]
 
 [[package]]
@@ -231,14 +235,14 @@ version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "pyochain", version = "0.5.52", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
-    { name = "pyochain", version = "0.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
+    { name = "pyochain", version = "0.9.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "pytest" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "pyochain", version = "0.5.52", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
-    { name = "pyochain", version = "0.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
+    { name = "pyochain", version = "0.9.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "pytest" },
     { name = "ruff" },
 ]

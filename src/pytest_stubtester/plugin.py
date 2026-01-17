@@ -18,7 +18,7 @@ class PyiModule(pytest.Module):
 
     @staticmethod
     def _run_doctest(dtest: doctest.DocTest) -> None:
-        runner = doctest.DocTestRunner(verbose=False)
+        runner = doctest.DocTestRunner()
         runner.run(dtest)
         if runner.failures:
             failure_msgs = (
@@ -28,10 +28,7 @@ class PyiModule(pytest.Module):
                 .map_star(lambda _, ex: f"Line {ex.lineno}: {ex.source.strip()}")
                 .join("\n")
             )
-            pytest.fail(
-                f"Doctest failed: {runner.failures} failures\n{failure_msgs}",
-                pytrace=False,
-            )
+            pytest.fail(f"Doctest failed: {runner.failures} failures\n{failure_msgs}")
 
     def collect(self) -> Iterator[pytest.Item]:
         """Collect all doctests from the .pyi file.
@@ -122,9 +119,7 @@ def _extract_doctests_from_ast(file_path: Path) -> pc.Iter[tuple[str, str, int]]
 
 def _get_tree(file_path: Path) -> pc.Result[ast.Module, None]:
     try:
-        return pc.Ok(
-            ast.parse(file_path.read_text(encoding="utf-8"), filename=str(file_path))
-        )
+        return pc.Ok(ast.parse(file_path.read_text(), filename=str(file_path)))
     except SyntaxError:
         return pc.Err(None)
 

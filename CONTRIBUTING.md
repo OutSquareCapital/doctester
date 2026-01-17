@@ -8,6 +8,14 @@ This project uses `pytest` for testing. The test suite covers unit tests and int
 
 ### Quick Start
 
+Install development dependencies:
+
+```bash
+uv sync --dev
+```
+
+Then run the tests with:
+
 ```bash
 uv run pytest tests/test_stubtester.py --pyi-enabled -v
 uv run pytest tests/examples/success/ --pyi-enabled -v

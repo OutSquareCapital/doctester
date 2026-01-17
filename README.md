@@ -1,24 +1,10 @@
 ﻿# pytest-stubtester
 
-A pytest plugin that discovers and runs doctests from `.pyi` stub files.
+A pytest plugin for testing doctests in `.pyi` stub files.
 
-## 🎯 Use Cases
+Designed for **Cython/PyO3/Rust extensions**, **third-party stubs**, or **stub-only packages**.
 
-This plugin is designed for:
-
-- **Stub file testing**: Validate examples in `.pyi` type stub files
-- **Non-Python codebases**: Test doctests for Cython/PyO3/Rust extensions where the implementation isn't in Python
-- **Third-party stubs**: Verify examples in type stubs for external libraries
-
-> **Note**: For regular Python code, always write doctests directly in your `.py` implementation files.
-
-## 🎯 How it Works
-
-1. **Integrates** with pytest's collection phase
-2. **Discovers** `.pyi` files automatically
-3. **Parses** doctests from docstrings using Python's doctest module
-4. **Creates** DoctestItem instances for pytest execution
-5. **Reports** failures with standard pytest output
+> 💡 For regular Python code, write doctests in `.py` files instead.
 
 ## 📦 Installation
 
@@ -26,74 +12,76 @@ This plugin is designed for:
 uv add git+https://github.com/OutSquareCapital/pytest-stubtester.git
 ```
 
-## 🚀 Usage
-
-### Basic Usage
+## 🚀 Quick Start
 
 ```bash
-# Enable the plugin with --pyi-enabled flag
-pytest tests/ --pyi-enabled -v
-
-# Test specific .pyi files
-pytest tests/my_stubs.pyi --pyi-enabled -v
+uv run pytest tests/ --pyi-enabled -v
 ```
 
-### Auto-enable in conftest.py
+### Command Examples
 
-Add to your `conftest.py` to enable automatically:
+```bash
+# Run all .pyi files
+uv run pytest tests/ --pyi-enabled -v
 
-```python
-def pytest_configure(config: object) -> None:
-    """Enable pytest-stubtester plugin automatically."""
-    config.option.pyi_enabled = True  # type: ignore[attr-defined]
+# Test specific file
+uv run pytest tests/my_stubs.pyi --pyi-enabled -v
+
+# Test specific function
+uv run pytest tests/my_stubs.pyi::function_name --pyi-enabled -v
+
+# Run tests matching pattern
+uv run pytest tests/my_stubs.pyi -k multiply --pyi-enabled -v
 ```
 
-### Configure in pytest.ini / pyproject.toml
+### Auto-Enable
 
-**pytest.ini:**
-
-```ini
-[pytest]
-addopts = --pyi-enabled
-```
-
-**pyproject.toml:**
+**Via `pyproject.toml`:**
 
 ```toml
 [tool.pytest.ini_options]
 addopts = ["--pyi-enabled"]
 ```
 
+**Via `conftest.py`:**
+
+```python
+def pytest_configure(config: object) -> None:
+    config.option.pyi_enabled = True  # type: ignore[attr-defined]
+```
+
 ## 📝 Example
 
-### Stub File (`.pyi`)
+Create a `.pyi` file with doctests:
 
 ```python
 # math_helpers.pyi
 def add(a: int, b: int) -> int:
     """Add two numbers.
     
-    ```python
     >>> add(2, 3)
     5
     >>> add(-1, 1)
     0
+    """
+
+def multiply(a: int, b: int) -> int:
+    """Multiply two numbers.
     
-    ```
+    >>> multiply(3, 4)
+    12
     """
 ```
 
-Run pytest:
+Run with pytest:
 
 ```bash
-pytest math_helpers.pyi --pyi-enabled -v
+uv run pytest math_helpers.pyi --pyi-enabled -v
+tests/math_helpers.pyi::add PASSED      [ 50%]
+tests/math_helpers.pyi::multiply PASSED [100%]
 ```
 
-## 🤝 Contributing
+### Dependencies
 
-Contributions welcome! Please ensure all tests pass:
-
-```bash
-uv run pytest tests/test_stubtester.py --pyi-enabled -v
-uv run pytest tests/examples/success/ --pyi-enabled -v
-```
+- Python 3.12>=
+- [pyochain](https://github.com/OutSquareCapital/pyochain) for internal implementation

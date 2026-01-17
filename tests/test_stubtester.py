@@ -132,7 +132,8 @@ def sub(a: int, b: int) -> int:
 
     result = pytester.runpytest("--pyi-enabled", "-v")
     assert result.ret == 0
-    result.stdout.fnmatch_lines(["*multi.pyi*PASSED*"])
+    result.stdout.fnmatch_lines(["*multi.pyi::add*PASSED*"])
+    result.stdout.fnmatch_lines(["*multi.pyi::sub*PASSED*"])
 
 
 def test_non_pyi_files_ignored(pytester: pytest.Pytester) -> None:

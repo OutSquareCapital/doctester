@@ -27,6 +27,7 @@ class Parsed(NamedTuple):
     """Line number in the source file."""
 
     def to_doctest(self, path: Path) -> tuple[str, doctest.DocTest]:
+        """Convert the parsed information to a doctest."""
         return (
             self.name,
             doctest.DocTestParser().get_doctest(
@@ -51,7 +52,7 @@ class PyiModule(pytest.Module):
         """
         return (
             _extract_doctests_from_ast(self.path)
-            .map(lambda test: test.to_doctest(self.path))
+            .map(lambda parsed: parsed.to_doctest(self.path))
             .filter_star(lambda _, test: bool(test.examples))
             .map_star(
                 lambda name, test: pytest.Function.from_parent(  # type: ignore[arg-type]

@@ -4,7 +4,7 @@
     name            = "pytest-stubtester"
     readme          = "README.md"
     requires-python = ">=3.12"
-    version         = "0.4.0"
+    version         = "0.5.0"
 
     [project.entry-points.pytest11]
         stubtester = "pytest_stubtester.plugin"
@@ -44,10 +44,6 @@
         docstring-code-format = true
 
 [dependency-groups]
-    dev = [
-    "pytest>=9.0.2",
-    "rich>=14.2.0",
-    "ruff>=0.14.9",
-]
+    dev = ["pytest>=9.0.2", "rich>=14.2.0", "ruff>=0.14.9"]
     [tool.ruff.lint.pydocstyle]
         convention = "google"

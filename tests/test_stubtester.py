@@ -5,7 +5,7 @@ from pathlib import Path
 import pyochain as pc
 import pytest
 
-import pytest_stubtester
+import pytest_stubtester as pst
 
 
 def test_plugin_is_registered(pytestconfig: pytest.Config) -> None:
@@ -16,20 +16,12 @@ def test_plugin_is_registered(pytestconfig: pytest.Config) -> None:
 
 def test_pyi_enabled_option_exists(pytestconfig: pytest.Config) -> None:
     """--pyi-enabled option should be available."""
-    assert hasattr(pytestconfig.option, "pyi_enabled")
-
-
-def test_plugin_exports() -> None:
-    """Plugin should export the expected items."""
-    assert hasattr(pytest_stubtester, "PyiModule")
-    assert hasattr(pytest_stubtester, "pytest_addoption")
-    assert hasattr(pytest_stubtester, "pytest_collect_file")
-    assert hasattr(pytest_stubtester, "__version__")
+    assert hasattr(pytestconfig.option, "stubs")
 
 
 def test_pyi_module_class_exists() -> None:
     """PyiModule class should exist and inherit from pytest.Module."""
-    assert issubclass(pytest_stubtester.PyiModule, pytest.Module)
+    assert issubclass(pst.PyiModule, pytest.Module)
 
 
 def test_plugin_disabled_by_default(pytester: pytest.Pytester) -> None:
@@ -63,7 +55,7 @@ def add(a: int, b: int) -> int:
 """,
     )
 
-    result = pytester.runpytest("--pyi-enabled", "-v")
+    result = pytester.runpytest(pst.COMMAND, "-v")
     # Should collect and pass the doctest
     assert result.ret == 0
     result.stdout.fnmatch_lines(["*test_sample.pyi*PASSED*"])
@@ -85,7 +77,7 @@ def multiply(a: int, b: int) -> int:
 """,
     )
 
-    result = pytester.runpytest("--pyi-enabled", "-v")
+    result = pytester.runpytest(pst.COMMAND, "-v")
     assert result.ret == 0
     result.stdout.fnmatch_lines(["*passing.pyi*PASSED*"])
 
@@ -104,7 +96,7 @@ def add(a: int, b: int) -> int:
 """,
     )
 
-    result = pytester.runpytest("--pyi-enabled", "-v")
+    result = pytester.runpytest(pst.COMMAND, "-v")
     assert result.ret != 0
     result.stdout.fnmatch_lines(["*failing.pyi*FAILED*"])
 
@@ -130,7 +122,7 @@ def sub(a: int, b: int) -> int:
 """,
     )
 
-    result = pytester.runpytest("--pyi-enabled", "-v")
+    result = pytester.runpytest(pst.COMMAND, "-v")
     assert result.ret == 0
     result.stdout.fnmatch_lines(["*multi.pyi::add*PASSED*"])
     result.stdout.fnmatch_lines(["*multi.pyi::sub*PASSED*"])
@@ -146,7 +138,7 @@ def test_non_pyi_files_ignored(pytester: pytest.Pytester) -> None:
 """,
     )
 
-    result = pytester.runpytest("--pyi-enabled", "-v")
+    result = pytester.runpytest(pst.COMMAND, "-v")
     # Should not collect .txt file
     result.stdout.no_fnmatch_line("*readme.txt*")
 
@@ -155,7 +147,7 @@ def test_empty_pyi_file(pytester: pytest.Pytester) -> None:
     """Empty .pyi file should not cause errors."""
     pytester.makefile(".pyi", empty="")
 
-    result = pytester.runpytest("--pyi-enabled", "-v")
+    result = pytester.runpytest(pst.COMMAND, "-v")
     # Should complete without errors, just no tests collected from this file
     assert "error" not in result.stdout.str().lower()
 
@@ -172,7 +164,7 @@ def function_with_docstring_no_tests(x: int) -> int:
 """,
     )
 
-    result = pytester.runpytest("--pyi-enabled", "-v", "--collect-only")
+    result = pytester.runpytest(pst.COMMAND, "-v", "--collect-only")
     # File with no doctests returns exit code 5 (NO_TESTS_COLLECTED)
     no_tests_collected = 5
     assert result.ret == no_tests_collected

@@ -15,23 +15,23 @@ uv add git+https://github.com/OutSquareCapital/pytest-stubtester.git
 ## 🚀 Quick Start
 
 ```bash
-uv run pytest tests/ --pyi-enabled -v
+uv run pytest tests/ --stubs -v
 ```
 
 ### Command Examples
 
 ```bash
 # Run all .pyi files
-uv run pytest tests/ --pyi-enabled -v
+uv run pytest tests/ --stubs -v
 
 # Test specific file
-uv run pytest tests/my_stubs.pyi --pyi-enabled -v
+uv run pytest tests/my_stubs.pyi --stubs -v
 
 # Test specific function
-uv run pytest tests/my_stubs.pyi::function_name --pyi-enabled -v
+uv run pytest tests/my_stubs.pyi::function_name --stubs -v
 
 # Run tests matching pattern
-uv run pytest tests/my_stubs.pyi -k multiply --pyi-enabled -v
+uv run pytest tests/my_stubs.pyi -k multiply --stubs -v
 ```
 
 ### Auto-Enable
@@ -40,7 +40,7 @@ uv run pytest tests/my_stubs.pyi -k multiply --pyi-enabled -v
 
 ```toml
 [tool.pytest.ini_options]
-addopts = ["--pyi-enabled"]
+addopts = ["--stubs"]
 ```
 
 **Via `conftest.py`:**
@@ -76,7 +76,7 @@ def multiply(a: int, b: int) -> int:
 Run with pytest:
 
 ```bash
-uv run pytest math_helpers.pyi --pyi-enabled -v
+uv run pytest math_helpers.pyi --stubs -v
 tests/math_helpers.pyi::add PASSED      [ 50%]
 tests/math_helpers.pyi::multiply PASSED [100%]
 ```

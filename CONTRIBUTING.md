@@ -17,8 +17,8 @@ uv sync --dev
 Then run the tests with:
 
 ```bash
-uv run pytest tests/test_stubtester.py --pyi-enabled -v
-uv run pytest tests/examples/success/ --pyi-enabled -v
+uv run pytest tests/test_stubtester.py --pyi-enabled -v --rich
+uv run pytest tests/examples/success/ --pyi-enabled -v --rich
 ```
 
 #### Test structure

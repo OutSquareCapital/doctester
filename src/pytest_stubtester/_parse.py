@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import re
+import textwrap
 from enum import Enum, auto
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -12,12 +13,19 @@ if TYPE_CHECKING:
 
     from pyochain.abc import PyoIterator
 
-MARKDOWN_BLOCK = re.compile(r"```(?:python|py)\n(.*?)\n```", re.DOTALL)
+MARKDOWN_BLOCK = re.compile(
+    r"^[ \t]*```(?:python|py)\n(.*?)\n[ \t]*```",
+    re.DOTALL | re.MULTILINE,
+)
 """Pattern to extract Python code blocks from Markdown-formatted docstrings.
 
 Two flavours are supported:
 - doctest style (contains `>>>`), compared against expected output
-- "standard" style (e.g. `assert x == y`), simply executed for side effects/errors
+- "standard" style (e.g. `assert x == y`).
+
+Fence markers may be indented (e.g. nested under an "Example:" line).
+
+The captured code is dedented in `_classify` before being returned.
 """
 
 
@@ -50,7 +58,13 @@ def _classify(
     # otherwise a fenced `assert`-style block can never match "```py" again.
     match option(MARKDOWN_BLOCK.search(doc)):
         case Some(fence):
-            code = Vec.from_ref(MARKDOWN_BLOCK.findall(doc)).iter().join("\n")
+            code = (
+                Vec
+                .from_ref(MARKDOWN_BLOCK.findall(doc))
+                .iter()
+                .map(textwrap.dedent)
+                .join("\n")
+            )
             # +1 skips past the fence marker line itself, down to the code.
             lineno = doc_lineno + doc[: fence.start()].count("\n") + 1
             kind = TestKind.DOCTEST if ">>>" in code else TestKind.MARKDOWN

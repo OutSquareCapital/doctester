@@ -114,3 +114,31 @@ def function_with_complex_return() -> dict[str, list[int | None]]:
 
     ```
     """
+
+def intersection() -> None:
+    """Exracted from pyochain.
+
+    Check complex docstring.
+
+    Args:
+        other (AbstractSet[Any]): The set to intersect with.
+
+    Returns:
+        AbstractSet[T]: A new `Set` containing shared elements only.
+
+    Example:
+        ```python
+        from pyochain import Set, Dict, Vec
+
+        from_set = Set((1, 2))
+        assert from_set.intersection({2, 3}) == Set((2,))
+        assert from_set.intersection({3, 4}) == Set(())
+        dct = Dict.from_ref({"a": 1, "b": 2, "c": 3})
+        from_keys = dct.keys().intersection({"b", "c", "d"}).iter().sort()
+        assert from_keys == Vec(("b", "c"))
+        from_items = (
+            dct.items().intersection({("b", 2), ("c", 3), ("d", 4)}).iter().sort()
+        )
+        assert from_items == Vec((("b", 2), ("c", 3)))
+        ```
+    """

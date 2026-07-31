@@ -34,3 +34,12 @@ def failing_test() -> None:
     3
     ```
     """
+
+def failing_test_md() -> None:
+    """Test qui va échouer.
+
+    Example:
+    ```python
+    assert 1 + 1 == 3  # Expected to fail.
+    ```
+    """

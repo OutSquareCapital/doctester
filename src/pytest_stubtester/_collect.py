@@ -1,105 +1,68 @@
-"""Pytest plugin for discovering and running doctests from .pyi stub files."""
-
 from __future__ import annotations
 
 import ast
 import doctest
-import re
 from typing import TYPE_CHECKING
 
-import pytest
-from _pytest.doctest import _get_runner  # ruff: ignore[import-private-name]
-from pyochain import Iter, Null, Option, Some, Vec, option
+from _pytest.doctest import (  # ruff: ignore[import-private-name]
+    DoctestItem,
+    _get_runner,  # pyright: ignore[reportPrivateUsage]
+)
+from pyochain import Null, Option, Some
+
+from ._md import MarkdownCodeItem
+from ._parse import Parsed, TestKind, parse_all
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
+    import pytest
     from _pytest.doctest import DoctestModule
-    from pyochain.abc import PyoIterator
-
-type HasDoc = ast.FunctionDef | ast.ClassDef | ast.Module
-MARKDOWN_BLOCK = re.compile(r"```python\n(.*?)\n```", re.DOTALL)
-"""Pattern to extract Python code blocks from Markdown-formatted docstrings.
-
-Example:
-    ```python
-    >>> 1 + 1
-    2
-    ```
-"""
-type Parsed = tuple[str, str, int]
-"""Parsed doctest information as a tuple of:
-- name (str)
-- docstring (str)
-- line number (int)
-"""
 
 
 def collect_all_tests(
     parent: DoctestModule,
     path: Path,
-) -> Iterator[pytest.DoctestItem]:
-
+) -> Iterator[pytest.Item]:
     txt = path.read_text(encoding="utf-8")
     filename = str(path)
     tree = ast.parse(txt, filename)
-    return (
-        _get_doc(tree, path.stem, 1)
-        .chain(Iter(tree.body).filter_map(_extract_all_docs).flatten())
-        .map_star(lambda name, doc, lineno: _to_doctest(name, doc, lineno, filename))
-        .filter_star(lambda _, test: test.examples)
-        .map_star(
-            lambda name, test: pytest.DoctestItem.from_parent(
-                parent,
-                name=name,
-                runner=_get_runner(),
-                dtest=test,
-            ),
-        )
+    return parse_all(tree, path).filter_map(
+        lambda parsed: from_parsed(parsed, filename, parent),
     )
 
 
-def _to_doctest(
-    name: str,
-    docstring: str,
-    lineno: int,
+def from_parsed(
+    parsed: Parsed,
     filename: str,
-) -> tuple[str, doctest.DocTest]:
-    string = (
-        Vec
-        .from_ref(MARKDOWN_BLOCK.findall(docstring))
-        .then(lambda m: m.iter().join("\n"))
-        .unwrap_or(docstring)
-    )
-    tst = doctest.DocTestParser().get_doctest(string, {}, name, filename, lineno)
-
-    return name, tst
-
-
-def _extract_all_docs(node: ast.stmt, prefix: str = "") -> Option[PyoIterator[Parsed]]:
-    match node:
-        case ast.ClassDef():
-            full_name = f"{prefix}{node.name}" if prefix else node.name
-            iterator = _get_doc(node, full_name, node.lineno).chain(
-                Iter(node.body)
-                .filter_map(
-                    lambda n: _extract_all_docs(n, f"{full_name}."),
-                )
-                .flatten(),
-            )
-            return Some(iterator)
-        case ast.FunctionDef():
-            full_name = f"{prefix}{node.name}" if prefix else node.name
-            return Some(_get_doc(node, full_name, node.lineno))
-        case _:
+    parent: DoctestModule,
+) -> Option[pytest.Item]:
+    match parsed.kind:
+        case TestKind.NONE:
             return Null()
-
-
-def _get_doc(node: HasDoc, name: str, lineno: int) -> PyoIterator[Parsed]:
-    return (
-        option(ast.get_docstring(node))
-        .filter(lambda d: ">>>" in d)
-        .map(lambda doc: (name, doc, lineno))
-        .iter()
-    )
+        case TestKind.MARKDOWN:
+            item = MarkdownCodeItem.from_parent(  # pyright: ignore[reportUnknownMemberType]
+                parent,
+                name=parsed.name,
+                source=parsed.code,
+                lineno=parsed.lineno,
+            )
+            return Some(item)
+        case TestKind.DOCTEST:
+            tst = doctest.DocTestParser().get_doctest(
+                parsed.code,
+                {},
+                parsed.name,
+                filename,
+                parsed.lineno,
+            )
+            if tst.examples:
+                item = DoctestItem.from_parent(
+                    parent,
+                    name=parsed.name,
+                    runner=_get_runner(verbose=False),
+                    dtest=tst,
+                )
+                return Some(item)
+            return Null()

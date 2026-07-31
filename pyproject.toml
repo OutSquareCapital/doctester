@@ -10,11 +10,7 @@
         stubtester = "pytest_stubtester.plugin"
 
 [dependency-groups]
-    dev = [
- "basedpyright>=1.39.9",
- "ruff>=0.15.19",
- "sdsort>=0.5.2",
-]
+    dev = ["basedpyright>=1.39.9", "ruff>=0.15.19", "sdsort>=0.5.2"]
 
 [tool.uv]
     package = true
@@ -25,7 +21,11 @@
 [build-system]
     build-backend = "uv_build"
     requires      = ["uv_build==0.11.24"]
-
+[tool.basedpyright]
+    reportExplicitAny      = false # As a library we have no choice but to use `Any` in some places, so we disable this check.
+    reportImportCycles     = false
+    reportMissingSuperCall = false
+    typeCheckingMode       = "all"
 
 [tool.pyrefly]
     preset = "all"

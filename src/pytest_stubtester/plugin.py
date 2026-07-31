@@ -20,7 +20,8 @@ class PyiModule(DoctestModule):
     """Custom pytest Module for collecting doctests from .pyi files."""
 
     @override
-    def collect(self) -> Iterator[pytest.DoctestItem]:
+    # pyrefly: ignore [bad-override]
+    def collect(self) -> Iterator[pytest.Item]:  # pyright: ignore[reportIncompatibleMethodOverride]
         return collect_all_tests(self, self.path)
 
 
@@ -54,4 +55,4 @@ def pytest_collect_file(file_path: Path, parent: pytest.Collector) -> PyiModule 
     if not parent.config.getoption(COMMAND) or file_path.suffix.lower() != ".pyi":
         return None
 
-    return PyiModule.from_parent(parent=parent, path=file_path)
+    return PyiModule.from_parent(parent=parent, path=file_path)  # pyright: ignore[reportUnknownMemberType]

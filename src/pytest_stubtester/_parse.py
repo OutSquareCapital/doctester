@@ -43,20 +43,21 @@ class Parsed(NamedTuple):
 def _classify(
     doc: str,
     name: str,
-    lineno: int,
+    doc_lineno: int,
     path: Path,
 ) -> Parsed:
     # Kind must be decided before the fence markers are stripped by extraction,
     # otherwise a fenced `assert`-style block can never match "```py" again.
-    match Vec.from_ref(MARKDOWN_BLOCK.findall(doc)).then(lambda m: m.iter().join("\n")):
-        case Some(code) if ">>>" in code:
-            return Parsed(name, code, lineno, path, TestKind.DOCTEST)
-        case Some(code):
-            return Parsed(name, code, lineno, path, TestKind.MARKDOWN)
-        case Null() if ">>>" in doc:
-            return Parsed(name, doc, lineno, path, TestKind.DOCTEST)
+    match option(MARKDOWN_BLOCK.search(doc)):
+        case Some(fence):
+            code = Vec.from_ref(MARKDOWN_BLOCK.findall(doc)).iter().join("\n")
+            # +1 skips past the fence marker line itself, down to the code.
+            lineno = doc_lineno + doc[: fence.start()].count("\n") + 1
+            kind = TestKind.DOCTEST if ">>>" in code else TestKind.MARKDOWN
+            return Parsed(name, code, lineno, path, kind)
         case Null():
-            return Parsed(name, doc, lineno, path, TestKind.NONE)
+            kind = TestKind.DOCTEST if ">>>" in doc else TestKind.NONE
+            return Parsed(name, doc, doc_lineno, path, kind)
 
 
 def parse_all(
@@ -65,17 +66,17 @@ def parse_all(
     prefix: str = "",
 ) -> PyoIterator[Parsed]:
 
-    def _get_doc(node: HasDoc, name: str, lineno: int) -> PyoIterator[Parsed]:
+    def _get_doc(node: HasDoc, name: str) -> PyoIterator[Parsed]:
         return (
             option(ast.get_docstring(node))
-            .map(lambda doc: _classify(doc, name, lineno, path))
+            .map(lambda doc: _classify(doc, name, node.body[0].lineno, path))
             .iter()
         )
 
     match node:
         case ast.ClassDef():
             full_name = f"{prefix}{node.name}" if prefix else node.name
-            return _get_doc(node, full_name, node.lineno).chain(
+            return _get_doc(node, full_name).chain(
                 Iter(node.body)
                 .map(
                     lambda n: parse_all(n, path, f"{full_name}."),
@@ -84,9 +85,9 @@ def parse_all(
             )
         case ast.FunctionDef():
             full_name = f"{prefix}{node.name}" if prefix else node.name
-            return _get_doc(node, full_name, node.lineno)
+            return _get_doc(node, full_name)
         case ast.Module():
-            return _get_doc(node, path.stem, 1).chain(
+            return _get_doc(node, path.stem).chain(
                 Iter(node.body).map(lambda n: parse_all(n, path, prefix)).flatten(),
             )
         case _:

@@ -8,7 +8,7 @@ import re
 from typing import TYPE_CHECKING, TypeIs
 
 import pytest
-from _pytest.doctest import _get_runner  # noqa: PLC2701
+from _pytest.doctest import _get_runner  # ruff: ignore[import-private-name]
 from pyochain import Iter, Vec, option
 
 if TYPE_CHECKING:

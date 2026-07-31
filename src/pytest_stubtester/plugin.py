@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 import pytest
-from _pytest.doctest import DoctestModule  # noqa: PLC2701
+from _pytest.doctest import DoctestModule  # ruff: ignore[import-private-name]
 
 from ._collect import collect_all_tests
 

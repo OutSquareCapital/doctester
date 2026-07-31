@@ -29,7 +29,7 @@ def multiply(x: int, y: int) -> int:
 
 def no_docstring() -> None: ...
 def empty_docstring() -> None:
-    """"""  # noqa: D419
+    """"""  # ruff: ignore[empty-docstring]
 
 def no_examples() -> None:
     """Function without examples.

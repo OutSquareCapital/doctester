@@ -1,7 +1,7 @@
 
 lint.ignore = [
-    "CPY001", # Ignore licence header
-    "PYI021", # Literally against the purpose of this plugin
+    "missing-copyright-notice", # Ignore licence header
+    "docstring-in-stub", # Literally against the purpose of this plugin
 ]
 lint.select = ["ALL"]
 preview = true
@@ -12,23 +12,23 @@ preview = true
     convention = "google"
 [lint.per-file-ignores]
     "src/pql/sql/_code_gen/*.py" = [
-        "A002",
-        "ANN401",
-        "FBT001",
-        "FBT002",
-        "PLR0913",
-        "PLW1641",
+        "builtin-argument-shadowing",
+        "any-type",
+        "boolean-type-hint-positional-argument",
+        "boolean-default-value-positional-argument",
+        "too-many-arguments",
+        "eq-without-hash",
     ]
-    "t.py" = ["ANN201", "D100", "D101", "D103"]
+    "t.py" = ["missing-return-type-undocumented-public-function", "undocumented-public-module", "undocumented-public-class", "undocumented-public-function"]
     "tests/*" = [
-        "D100",
-        "D101",
-        "D102",
-        "D103",
-        "D104",
-        "DTZ001",
-        "FBT001",
-        "S101",
+        "undocumented-public-module",
+        "undocumented-public-class",
+        "undocumented-public-method",
+        "undocumented-public-function",
+        "undocumented-public-package",
+        "call-datetime-without-tzinfo",
+        "boolean-type-hint-positional-argument",
+        "assert",
     ]
 [lint.isort]
     combine-as-imports = true

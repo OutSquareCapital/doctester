@@ -10,7 +10,10 @@
         stubtester = "pytest_stubtester.plugin"
 
 [dependency-groups]
-    dev = ["pyrefly>=1.1.1", "ruff>=0.15.19", "sdsort>=0.5.2"]
+    dev = [
+ "ruff>=0.15.19",
+ "sdsort>=0.5.2",
+]
 
 [tool.uv]
     package = true

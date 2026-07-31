@@ -5,11 +5,11 @@ from __future__ import annotations
 import ast
 import doctest
 import re
-from typing import TYPE_CHECKING, TypeIs
+from typing import TYPE_CHECKING
 
 import pytest
 from _pytest.doctest import _get_runner  # ruff: ignore[import-private-name]
-from pyochain import Iter, Vec, option
+from pyochain import Iter, Null, Option, Some, Vec, option
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -18,8 +18,7 @@ if TYPE_CHECKING:
     from _pytest.doctest import DoctestModule
     from pyochain.abc import PyoIterator
 
-type IsDef = ast.FunctionDef | ast.ClassDef
-type HasDoc = IsDef | ast.Module
+type HasDoc = ast.FunctionDef | ast.ClassDef | ast.Module
 MARKDOWN_BLOCK = re.compile(r"```python\n(.*?)\n```", re.DOTALL)
 """Pattern to extract Python code blocks from Markdown-formatted docstrings.
 
@@ -47,14 +46,14 @@ def collect_all_tests(
     tree = ast.parse(txt, filename)
     return (
         _get_doc(tree, path.stem, 1)
-        .chain(Iter(tree.body).filter(_is_def).flat_map(_extract_all_docs))
+        .chain(Iter(tree.body).filter_map(_extract_all_docs).flatten())
         .map_star(lambda name, doc, lineno: _to_doctest(name, doc, lineno, filename))
-        .filter_star(lambda _, test: bool(test.examples))
+        .filter_star(lambda _, test: test.examples)
         .map_star(
             lambda name, test: pytest.DoctestItem.from_parent(
                 parent,
                 name=name,
-                runner=_get_runner(verbose=False),
+                runner=_get_runner(),
                 dtest=test,
             ),
         )
@@ -67,32 +66,34 @@ def _to_doctest(
     lineno: int,
     filename: str,
 ) -> tuple[str, doctest.DocTest]:
-    string = _parse_docstring(docstring)
-    tst = doctest.DocTestParser().get_doctest(string, {}, name, filename, lineno)
-
-    return name, tst
-
-
-def _parse_docstring(docstring: str) -> str:
-    return (
+    string = (
         Vec
         .from_ref(MARKDOWN_BLOCK.findall(docstring))
         .then(lambda m: m.iter().join("\n"))
         .unwrap_or(docstring)
     )
+    tst = doctest.DocTestParser().get_doctest(string, {}, name, filename, lineno)
+
+    return name, tst
 
 
-def _extract_all_docs(node: IsDef, prefix: str = "") -> PyoIterator[Parsed]:
-    full_name = f"{prefix}{node.name}" if prefix else node.name
+def _extract_all_docs(node: ast.stmt, prefix: str = "") -> Option[PyoIterator[Parsed]]:
     match node:
         case ast.ClassDef():
-            return _get_doc(node, full_name, node.lineno).chain(
+            full_name = f"{prefix}{node.name}" if prefix else node.name
+            iterator = _get_doc(node, full_name, node.lineno).chain(
                 Iter(node.body)
-                .filter(_is_def)
-                .flat_map(lambda n: _extract_all_docs(n, f"{full_name}.")),
+                .filter_map(
+                    lambda n: _extract_all_docs(n, f"{full_name}."),
+                )
+                .flatten(),
             )
+            return Some(iterator)
         case ast.FunctionDef():
-            return _get_doc(node, full_name, node.lineno)
+            full_name = f"{prefix}{node.name}" if prefix else node.name
+            return Some(_get_doc(node, full_name, node.lineno))
+        case _:
+            return Null()
 
 
 def _get_doc(node: HasDoc, name: str, lineno: int) -> PyoIterator[Parsed]:
@@ -102,7 +103,3 @@ def _get_doc(node: HasDoc, name: str, lineno: int) -> PyoIterator[Parsed]:
         .map(lambda doc: (name, doc, lineno))
         .iter()
     )
-
-
-def _is_def(n: object) -> TypeIs[IsDef]:
-    return isinstance(n, ast.FunctionDef | ast.ClassDef)

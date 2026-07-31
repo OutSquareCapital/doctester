@@ -25,6 +25,15 @@ def multiply(x: int, y: int) -> int:
     ```
     """
 
+def multiply_no_doctest(x: int, y: int) -> int:
+    """Multiply two numbers.
+
+    ```python
+    assert 3 * 4 == 12
+    assert 0 * 100 == 0
+    ```
+    """
+
 """Stub file with no doctests to test empty file handling."""
 
 def no_docstring() -> None: ...

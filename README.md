@@ -4,17 +4,17 @@ A pytest plugin for testing doctests in `.pyi` stub files.
 
 Designed for **Cython/PyO3/Rust extensions** or **stub-only packages**.
 
-> 💡 For regular Python code, write doctests in `.py` files instead.
+Works with both **doctests** (i.e `>>>` lines) and **markup code blocks** (i.e. \`\`\`python ...\`\`\` blocks).
 
 ## 📦 Installation
 
-```bash
+```shell
 uv add git+https://github.com/OutSquareCapital/pytest-stubtester.git
 ```
 
 ## 🚀 Quick Start
 
-```bash
+```shell
 uv run pytest <path_to_tests> --stubs
 ```
 
@@ -36,17 +36,14 @@ def pytest_configure(config: object) -> None:
 
 ## 📝 Example
 
-Create a `foo.pyi` file with doctests:
+Create a `foo.pyi` file with the following content:
 
 ```python
 def add(a: int, b: int) -> int:
     """Add two numbers.
 
-    >>> from operator import add
-    >>> add(2, 3)
+    >>> 2 + 3
     5
-    >>> add(-1, 1)
-    0
     """
 
 # Also works with markup code blocks:
@@ -54,26 +51,88 @@ def multiply(a: int, b: int) -> int:
     """Multiply two numbers.
 
     ```python
-    >>> from operator import mul
-    >>> mul(3, 4)
-    12
+    from operator import mul
 
+    assert mul(3, 4) == 12
     ```
+    """
+
+def failed_test(a: int, b: int) -> int:
+    """Does not pass.
+
+    ```python
+    assert 1 + 1 == 3
+    ```
+    """
+
+def failed_docttest(a: int, b: int) -> int:
+    """Does not pass.
+
+    >>> 1 + 1
+    3
     """
 
 ```
 
-Run with pytest:
+Run with pytest
 
-```bash
-uv run pytest foo.pyi --stubs -v
+```shell
+uv run pytest foo.pyi --stubs
 ```
 
 Output:
 
 ```shell
-foo.pyi::add PASSED                                                                                                                                                                     [ 50%]
-foo.pyi::multiply PASSED
+plugins: stubtester-0.8.0
+collected 4 items                                                                                                                                                                                                                                          
+
+foo.pyi ..FF                                                                                                                                                                                                                                         [100%]
+
+======================================================================================================================== FAILURES =========================================================================================================================
+_______________________________________________________________________________________________________________________ failed_test _______________________________________________________________________________________________________________________
+
+    def add(a: int, b: int) -> int:
+        """Add two numbers.
+    
+        >>> 2 + 3
+        5
+        """
+    
+    # Also works with markup code blocks:
+    def multiply(a: int, b: int) -> int:
+        """Multiply two numbers.
+    
+        ```python
+        from operator import mul
+    
+        assert mul(3, 4) == 12
+        ```
+        """
+    
+    def failed_test(a: int, b: int) -> int:
+        """Does not pass.
+    
+        ```python
+>       assert 1 + 1 == 3
+        ```
+        """
+E       assert (1 + 1) == 3
+
+foo.pyi:23: AssertionError
+________________________________________________________________________________________________________________ [doctest] failed_docttest ________________________________________________________________________________________________________________
+029 Does not pass.
+030 
+031 >>> 1 + 1
+Expected:
+    3
+Got:
+    2
+
+C:\Users\tibo\python_codes\doctester\foo.pyi:31: DocTestFailure
+================================================================================================================= short test summary info =================================================================================================================
+FAILED foo.pyi::failed_test - assert (1 + 1) == 3
+FAILED foo.pyi::failed_docttest
+=============================================================================================================== 2 failed, 2 passed in 0.20s ===============================================================================================================
 ```
 
 ### Dependencies

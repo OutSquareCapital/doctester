@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, override
 import pytest
 from _pytest.doctest import DoctestModule  # ruff: ignore[import-private-name]
 
-from ._collect import collect_all_tests
+from ._parse import collect_all_tests
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

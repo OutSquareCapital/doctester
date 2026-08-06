@@ -55,6 +55,6 @@ def pytest_collect_file(
         pytest.Module | None
 
     """
-    if not parent.config.getoption(COMMAND):
+    if not parent.config.getoption(COMMAND) or file_path.suffix not in {".pyi", ".md"}:
         return None
     return ExtModule.from_parent(parent=parent, path=file_path)  # pyright: ignore[reportUnknownMemberType]

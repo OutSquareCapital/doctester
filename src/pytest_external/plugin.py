@@ -56,9 +56,6 @@ def pytest_collect_file(
         pytest.Module | None
 
     """
-    if (
-        not parent.config.getoption(COMMAND)
-        or file_path.suffix not in FileKind.__args__
-    ):
+    if not parent.config.getoption(COMMAND) or file_path.suffix not in FileKind:
         return None
     return ExtModule.from_parent(parent=parent, path=file_path)  # pyright: ignore[reportUnknownMemberType]

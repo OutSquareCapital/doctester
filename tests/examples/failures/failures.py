@@ -46,3 +46,22 @@ def failing_test_md() -> None:
     assert 1 + 1 == 3  # Expected to fail.
     ```
     """
+
+
+def error_render[V]() -> None:
+    """Check error rendering.
+
+    Example:
+        ```python
+        >>> from pyochain.collections import StableSet
+        >>>
+        >>> original = {"Alice": 30, "Bob": 25, "Charlie": 35}
+        >>> set_obfdfj = StableSet.from_ref(original)
+        >>> set_obj
+        StableSet('Alice', 'Bob', 'Charlie')
+        >>> original["David"] = 40
+        >>> set_obj
+        StableSet('Alice', 'Bob', 'Charlie', 'David')
+
+        ```
+    """

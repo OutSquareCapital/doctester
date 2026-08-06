@@ -7,11 +7,24 @@ from typing import TYPE_CHECKING, Final
 
 from _pytest.doctest import (  # ruff: ignore[import-private-name]
     DoctestItem,
+    _get_checker,  # pyright: ignore[reportPrivateUsage]
+    _get_continue_on_failure,  # pyright: ignore[reportPrivateUsage]
     _get_runner,  # pyright: ignore[reportPrivateUsage]
+    get_optionflags,
 )
 from pyochain import Iter, Null, Option, Some, Vec, option
 
-from ._definitions import MARKDOWN_BLOCK, Fence, HasDoc, Parsed, TestInfos, TestKind
+from ._definitions import (
+    DOCLINE,
+    MARKDOWN_BLOCK,
+    PYFENCE,
+    Fence,
+    FileKind,
+    HasDoc,
+    Parsed,
+    TestInfos,
+    TestKind,
+)
 from ._md import MarkdownCodeItem
 
 if TYPE_CHECKING:
@@ -36,16 +49,16 @@ def collect_all_tests(
 
 def _get_iterator(txt: str, path: Path, filename: str) -> PyoIterator[Parsed]:
     match path.suffix:
-        case ".pyi" | ".py":
+        case FileKind.PYI | FileKind.PY:
             return _parse_pyi(
                 ast.parse(txt, filename),
                 path,
             )
-        case ".md":
+        case FileKind.MD:
             return Iter(_parse_md(txt)).map(
                 lambda fence: Parsed(
                     fence,
-                    TestKind.DOCTEST if ">>>" in fence.code else TestKind.MARKDOWN,
+                    TestKind.DOCTEST if DOCLINE in fence.code else TestKind.MARKDOWN,
                     TestInfos(f"{path.stem}:{fence.lineno}", path),
                 ),
             )
@@ -70,18 +83,29 @@ def _to_item(
             )
             return Some(item)
         case TestKind.DOCTEST:
+            if parsed.infos.path.suffix == FileKind.PY:
+                globs = parent.obj.__dict__.copy()  # pyright: ignore[reportAny]
+            else:
+                globs = {"__name__": "__main__"}
+
             tst = DocTestParser().get_doctest(
                 parsed.fence.code,
-                {},
+                globs,
                 parsed.infos.name,
                 filename,
                 parsed.fence.lineno,
             )
             if tst.examples:
+                config = parent.config
                 item = DoctestItem.from_parent(
                     parent,
                     name=parsed.infos.name,
-                    runner=_get_runner(verbose=False),
+                    runner=_get_runner(
+                        verbose=False,
+                        optionflags=get_optionflags(config),
+                        checker=_get_checker(),
+                        continue_on_failure=_get_continue_on_failure(config),
+                    ),
                     dtest=tst,
                 )
                 return Some(item)
@@ -117,7 +141,7 @@ def _parse_md(text: str) -> Iterator[Fence]:
 
             info = stripped[n:].strip()
 
-            buf = Vec[str](()) if info in {"py", "python"} else None
+            buf = Vec[str](()) if info in PYFENCE else None
             continue
 
         # fermeture du fence
@@ -204,9 +228,9 @@ def _classify(
             # +1 skips past the fence marker line itself, down to the code.
             lineno = doc_lineno + doc[: fence.start()].count("\n") + 1
             fence = Fence(code, lineno)
-            kind = TestKind.DOCTEST if ">>>" in code else TestKind.MARKDOWN
+            kind = TestKind.DOCTEST if DOCLINE in code else TestKind.MARKDOWN
             return Parsed(fence, kind, infos)
         case Null():
-            kind = TestKind.DOCTEST if ">>>" in doc else TestKind.NONE
+            kind = TestKind.DOCTEST if DOCLINE in doc else TestKind.NONE
             fence = Fence(doc, doc_lineno)
             return Parsed(fence, kind, infos)

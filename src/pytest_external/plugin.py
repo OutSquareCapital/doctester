@@ -13,11 +13,11 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-COMMAND = "--stubs"
+COMMAND = "--external"
 
 
-class PyiModule(DoctestModule):
-    """Custom pytest Module for collecting doctests from .pyi files."""
+class ExtModule(DoctestModule):
+    """Custom pytest Module for collecting doctests from non .py files."""
 
     @override
     # pyrefly: ignore [bad-override]
@@ -36,23 +36,25 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         COMMAND,
         action="store_true",
         default=False,
-        help="Enable automatic .pyi file collection and doctest execution",
+        help="Enable automatic non .py file collection and doctest execution",
     )
 
 
 @pytest.hookimpl(trylast=True)
-def pytest_collect_file(file_path: Path, parent: pytest.Collector) -> PyiModule | None:
-    """Collect .pyi files for doctest execution.
+def pytest_collect_file(
+    file_path: Path,
+    parent: pytest.Collector,
+) -> pytest.Module | None:
+    """Collect files for doctest execution.
 
     Args:
         file_path (Path): Path to the file being collected.
         parent (pytest.Collector): Parent collector node.
 
     Returns:
-        PyiModule | None: PyiModule instance if .pyi file and enabled, None otherwise.
+        pytest.Module | None
 
     """
-    if not parent.config.getoption(COMMAND) or file_path.suffix.lower() != ".pyi":
+    if not parent.config.getoption(COMMAND):
         return None
-
-    return PyiModule.from_parent(parent=parent, path=file_path)  # pyright: ignore[reportUnknownMemberType]
+    return ExtModule.from_parent(parent=parent, path=file_path)  # pyright: ignore[reportUnknownMemberType]

@@ -11,7 +11,7 @@ from _pytest.doctest import (  # ruff: ignore[import-private-name]
 )
 from pyochain import Iter, Null, Option, Some, Vec, option
 
-from ._definitions import MARKDOWN_BLOCK, HasDoc, Parsed, TestInfos, TestKind
+from ._definitions import MARKDOWN_BLOCK, Fence, HasDoc, Parsed, TestInfos, TestKind
 from ._md import MarkdownCodeItem
 
 if TYPE_CHECKING:
@@ -29,9 +29,28 @@ def collect_all_tests(
 ) -> Iterator[pytest.Item]:
     txt = path.read_text(encoding="utf-8")
     filename = str(path)
-    return _parse_all(ast.parse(txt, filename), path).filter_map(
+    return _get_iterator(txt, path, filename).filter_map(
         lambda parsed: _to_item(parsed, filename, parent),
     )
+
+
+def _get_iterator(txt: str, path: Path, filename: str) -> PyoIterator[Parsed]:
+    match path.suffix:
+        case ".pyi":
+            return _parse_pyi(
+                ast.parse(txt, filename),
+                path,
+            )
+        case ".md":
+            return Iter(_parse_md(txt)).map(
+                lambda fence: Parsed(
+                    fence,
+                    TestKind.DOCTEST if ">>>" in fence.code else TestKind.MARKDOWN,
+                    TestInfos(f"{path.stem}:{fence.lineno}", path),
+                ),
+            )
+        case _:
+            return Iter(())
 
 
 def _to_item(
@@ -46,17 +65,17 @@ def _to_item(
             item = MarkdownCodeItem.from_parent(  # pyright: ignore[reportUnknownMemberType]
                 parent,
                 name=parsed.infos.name,
-                source=parsed.code,
-                lineno=parsed.lineno,
+                source=parsed.fence.code,
+                lineno=parsed.fence.lineno,
             )
             return Some(item)
         case TestKind.DOCTEST:
             tst = DocTestParser().get_doctest(
-                parsed.code,
+                parsed.fence.code,
                 {},
                 parsed.infos.name,
                 filename,
-                parsed.lineno,
+                parsed.fence.lineno,
             )
             if tst.examples:
                 item = DoctestItem.from_parent(
@@ -69,7 +88,59 @@ def _to_item(
             return Null()
 
 
-def _parse_all(
+def _parse_md(text: str) -> Iterator[Fence]:
+    marker: str | None = None
+    fence_len = 0
+    start_lineno = 0
+    buf: Vec[str] | None = None
+
+    for lineno, line in Vec.from_ref(text.splitlines()).iter().enumerate(start=1):
+        indent = len(line) - len(line.lstrip(" "))
+        stripped = line if indent > 3 else line[indent:]
+
+        if marker is None:
+            if not stripped:
+                continue
+
+            ch = stripped[0]
+            if ch not in {"`", "~"}:
+                continue
+
+            n = len(stripped) - len(stripped.lstrip(ch))
+            if n < 3:
+                continue
+
+            marker = ch
+            fence_len = n
+            start_lineno = lineno + 1
+
+            info = stripped[n:].strip()
+
+            buf = Vec[str](()) if info in {"py", "python"} else None
+            continue
+
+        # fermeture du fence
+        if stripped.startswith(marker):
+            n = len(stripped) - len(stripped.lstrip(marker))
+
+            if n >= fence_len and not stripped[n:].strip():
+                if buf is not None:
+                    yield Fence(
+                        buf.iter().join("\n"),
+                        start_lineno,
+                    )
+
+                marker = None
+                fence_len = 0
+                buf = None
+                continue
+
+        # contenu du fence Python uniquement
+        if buf is not None:
+            buf.append(line)
+
+
+def _parse_pyi(
     node: ast.AST,
     path: Path,
     prefix: str = "",
@@ -102,7 +173,7 @@ def _get_subnodes(
     prefix: str,
     path: Path,
 ) -> PyoIterator[Parsed]:
-    return Iter(nodes).flat_map(lambda node: _parse_all(node, path, prefix))
+    return Iter(nodes).flat_map(lambda node: _parse_pyi(node, path, prefix))
 
 
 def _get_doc(node: HasDoc, infos: TestInfos) -> PyoIterator[Parsed]:
@@ -131,8 +202,10 @@ def _classify(
             )
             # +1 skips past the fence marker line itself, down to the code.
             lineno = doc_lineno + doc[: fence.start()].count("\n") + 1
+            fence = Fence(code, lineno)
             kind = TestKind.DOCTEST if ">>>" in code else TestKind.MARKDOWN
-            return Parsed(code, lineno, kind, infos)
+            return Parsed(fence, kind, infos)
         case Null():
             kind = TestKind.DOCTEST if ">>>" in doc else TestKind.NONE
-            return Parsed(doc, doc_lineno, kind, infos)
+            fence = Fence(doc, doc_lineno)
+            return Parsed(fence, kind, infos)

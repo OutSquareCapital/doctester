@@ -31,14 +31,16 @@ type HasDoc = ast.FunctionDef | ast.ClassDef | ast.Module
 class Parsed(NamedTuple):
     """Parsed doc data."""
 
-    code: str
-    """The extracted code block from the docstring, dedented and ready for execution."""
-    lineno: int
-    """The line number in the source file where the code block starts."""
+    fence: Fence
     kind: TestKind
     """The kind of test extracted from the docstring (doctest, markdown, or none)."""
     infos: TestInfos
     """Basic, static information about the test (name and path)."""
+
+
+class Fence(NamedTuple):
+    code: str
+    lineno: int
 
 
 class TestInfos(NamedTuple):

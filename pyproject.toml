@@ -1,13 +1,16 @@
 [project]
-    dependencies    = ["pyochain>=0.26.0", "pytest>=9.1.1"]
+    dependencies    = [
+    "pyochain>=0.26.0",
+    "pytest>=9.1.1",
+]
     description     = "Pytest plugin for discovering and running doctests from Python stub files (.pyi)."
-    name            = "pytest-stubtester"
+    name            = "pytest-external"
     readme          = "README.md"
     requires-python = ">=3.13"
-    version         = "0.8.1"
+    version         = "0.9.0"
 
     [project.entry-points.pytest11]
-        stubtester = "pytest_stubtester.plugin"
+        external = "pytest_external.plugin"
 
 [dependency-groups]
     dev = ["basedpyright>=1.39.9", "ruff>=0.15.19", "sdsort>=0.5.2"]
@@ -16,7 +19,7 @@
     package = true
 
     [tool.uv.sources]
-        pytest_stubtester = { workspace = true }
+        pytest_external = { workspace = true }
 
 [build-system]
     build-backend = "uv_build"

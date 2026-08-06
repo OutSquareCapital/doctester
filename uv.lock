@@ -122,8 +122,8 @@ wheels = [
 ]
 
 [[package]]
-name = "pytest-stubtester"
-version = "0.8.1"
+name = "pytest-external"
+version = "0.9.0"
 source = { editable = "." }
 dependencies = [
     { name = "pyochain" },

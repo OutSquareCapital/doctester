@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 import textwrap
 from doctest import DocTestParser
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from _pytest.doctest import (  # ruff: ignore[import-private-name]
     DoctestItem,
@@ -21,6 +21,8 @@ if TYPE_CHECKING:
     import pytest
     from _pytest.doctest import DoctestModule
     from pyochain.abc import PyoIterator
+
+# TODO: markdown blocks in .py files
 
 
 def collect_all_tests(
@@ -92,11 +94,12 @@ def _parse_md(text: str) -> Iterator[Fence]:
     marker: str | None = None
     fence_len = 0
     start_lineno = 0
+    limit: Final = 3
     buf: Vec[str] | None = None
 
     for lineno, line in Vec.from_ref(text.splitlines()).iter().enumerate(start=1):
         indent = len(line) - len(line.lstrip(" "))
-        stripped = line if indent > 3 else line[indent:]
+        stripped = line if indent > limit else line[indent:]
 
         if marker is None:
             if not stripped:
@@ -107,7 +110,7 @@ def _parse_md(text: str) -> Iterator[Fence]:
                 continue
 
             n = len(stripped) - len(stripped.lstrip(ch))
-            if n < 3:
+            if n < limit:
                 continue
 
             marker = ch

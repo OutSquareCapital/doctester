@@ -1,21 +1,23 @@
-﻿# pytest-external
+﻿# pytest-docflex
 
-A pytest plugin for testing doctests in `.pyi` or `.md` files.
+A pytest plugin for testing fenced code blocks or doctests in `py`/`.pyi`/`.md` files.
 
 Designed for **Cython/PyO3/Rust extensions**, **stub-only packages**, or **documentation testing**.
 
 Works with both **doctests** (i.e `>>>` lines) and **markup code blocks** (i.e. \`\`\`python ...\`\`\` blocks).
 
+The idea is to allow *flexible* use of tests in documentation, anywhere, and to make it work with pytest seamlessly.
+
 ## 📦 Installation
 
 ```shell
-uv add git+https://github.com/OutSquareCapital/pytest-external.git
+uv add git+https://github.com/OutSquareCapital/pytest-docflex.git
 ```
 
 ## 🚀 Quick Start
 
 ```shell
-uv run pytest <path_to_tests> --ext
+uv run pytest <path_to_tests> --docflex
 ```
 
 ### Auto-Enable
@@ -24,14 +26,14 @@ uv run pytest <path_to_tests> --ext
 
 ```toml
 [tool.pytest.ini_options]
-addopts = ["--external"]
+addopts = ["--docflex"]
 ```
 
 **Via `conftest.py`:**
 
 ```python
 def pytest_configure(config: object) -> None:
-    config.option.external_enabled = True  # type: ignore[attr-defined]
+    config.option.docflex_enabled = True  # type: ignore[attr-defined]
 ```
 
 ## 📝 Example
@@ -63,6 +65,7 @@ def failed_test(a: int, b: int) -> int:
 
     ```python
     import pytest
+
     with pytest.raises(AssertionError):
         assert 1 + 1 == 3
     ```

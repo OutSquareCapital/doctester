@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 import re
 from enum import Enum, auto
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,6 +26,8 @@ The captured code is dedented in `_classify` before being returned.
 
 type HasDoc = ast.FunctionDef | ast.ClassDef | ast.Module
 """Any AST node susceptible to have testable docstrings."""
+FileKind = Literal[".pyi", ".md", ".py"]
+"""All possible file kinds that can be collected by the plugin."""
 
 
 class Parsed(NamedTuple):

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, override
 import pytest
 from _pytest.doctest import DoctestModule  # ruff: ignore[import-private-name]
 
+from ._definitions import FileKind
 from ._parse import collect_all_tests
 
 if TYPE_CHECKING:
@@ -55,6 +56,9 @@ def pytest_collect_file(
         pytest.Module | None
 
     """
-    if not parent.config.getoption(COMMAND) or file_path.suffix not in {".pyi", ".md"}:
+    if (
+        not parent.config.getoption(COMMAND)
+        or file_path.suffix not in FileKind.__args__
+    ):
         return None
     return ExtModule.from_parent(parent=parent, path=file_path)  # pyright: ignore[reportUnknownMemberType]

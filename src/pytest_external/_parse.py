@@ -22,8 +22,6 @@ if TYPE_CHECKING:
     from _pytest.doctest import DoctestModule
     from pyochain.abc import PyoIterator
 
-# TODO: markdown blocks in .py files
-
 
 def collect_all_tests(
     parent: DoctestModule,
@@ -38,7 +36,7 @@ def collect_all_tests(
 
 def _get_iterator(txt: str, path: Path, filename: str) -> PyoIterator[Parsed]:
     match path.suffix:
-        case ".pyi":
+        case ".pyi" | ".py":
             return _parse_pyi(
                 ast.parse(txt, filename),
                 path,

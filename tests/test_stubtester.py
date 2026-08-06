@@ -6,18 +6,18 @@ from pathlib import Path
 
 import pytest
 
-import pytest_external as pst
+import pytest_docflex as pst
 
 
 def test_plugin_is_registered(pytestconfig: pytest.Config) -> None:
     """Plugin should be registered with pytest."""
-    plugin = pytestconfig.pluginmanager.get_plugin("external")
+    plugin = pytestconfig.pluginmanager.get_plugin("docflex")
     assert plugin is not None
 
 
 def test_pyi_enabled_option_exists(pytestconfig: pytest.Config) -> None:
     """--pyi-enabled option should be available."""
-    assert hasattr(pytestconfig.option, "external")
+    assert hasattr(pytestconfig.option, "docflex")
 
 
 def test_pyi_module_class_exists() -> None:

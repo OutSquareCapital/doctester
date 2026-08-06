@@ -5,6 +5,7 @@ lint.ignore = [
     "missing-copyright-notice", # Ignore licence header
     "missing-todo-author",
     "missing-todo-link",
+    "superfluous-else-return",  # I don't like this rule
 ]
 lint.select = ["ALL"]
 preview = true

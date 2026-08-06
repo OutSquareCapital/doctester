@@ -1,11 +1,10 @@
-"""Pytest plugin for discovering and running doctests from .pyi stub files."""
+"""Pytest plugin for flexibly testing code residing in documentation."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
 import pytest
-from _pytest.doctest import DoctestModule  # ruff: ignore[import-private-name]
 
 from ._definitions import FileKind
 from ._parse import collect_all_tests
@@ -14,20 +13,19 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-COMMAND = "--external"
+COMMAND = "--docflex"
 
 
-class ExtModule(DoctestModule):
-    """Custom pytest Module for collecting doctests from non .py files."""
+class ExtModule(pytest.Module):
+    """Custom pytest Module for collecting tests for the plugin."""
 
     @override
-    # pyrefly: ignore [bad-override]
-    def collect(self) -> Iterator[pytest.Item]:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def collect(self) -> Iterator[pytest.Item]:
         return collect_all_tests(self, self.path)
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
-    """Add command-line options for the stubtester plugin.
+    """Add command-line options for the docflex plugin.
 
     Args:
         parser (pytest.Parser): Pytest command-line parser.
@@ -37,7 +35,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         COMMAND,
         action="store_true",
         default=False,
-        help="Enable automatic non .py file collection and doctest execution",
+        help="Enable automatic execution for docflex plugin.",
     )
 
 
@@ -46,7 +44,7 @@ def pytest_collect_file(
     file_path: Path,
     parent: pytest.Collector,
 ) -> pytest.Module | None:
-    """Collect files for doctest execution.
+    """Collect files for docflex plugin execution.
 
     Args:
         file_path (Path): Path to the file being collected.

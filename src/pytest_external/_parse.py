@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import ast
 import textwrap
+from collections.abc import Iterator
 from doctest import DocTestParser
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, override
 
 from _pytest.doctest import (  # ruff: ignore[import-private-name]
     DoctestItem,
@@ -12,7 +13,7 @@ from _pytest.doctest import (  # ruff: ignore[import-private-name]
     _get_runner,  # pyright: ignore[reportPrivateUsage]
     get_optionflags,
 )
-from pyochain import Iter, Null, Option, Some, Vec, option
+from pyochain import NONE, Iter, Null, Option, Some, Vec, option
 
 from ._definitions import (
     DOCLINE,
@@ -28,16 +29,14 @@ from ._definitions import (
 from ._md import MarkdownCodeItem
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
     from pathlib import Path
 
     import pytest
-    from _pytest.doctest import DoctestModule
     from pyochain.abc import PyoIterator
 
 
 def collect_all_tests(
-    parent: DoctestModule,
+    parent: pytest.Module,
     path: Path,
 ) -> Iterator[pytest.Item]:
     txt = path.read_text(encoding="utf-8")
@@ -55,7 +54,7 @@ def _get_iterator(txt: str, path: Path, filename: str) -> PyoIterator[Parsed]:
                 path,
             )
         case FileKind.MD:
-            return Iter(_parse_md(txt)).map(
+            return Iter(MarkdownParser(txt)).map(
                 lambda fence: Parsed(
                     fence,
                     TestKind.DOCTEST if DOCLINE in fence.code else TestKind.MARKDOWN,
@@ -69,7 +68,7 @@ def _get_iterator(txt: str, path: Path, filename: str) -> PyoIterator[Parsed]:
 def _to_item(
     parsed: Parsed,
     filename: str,
-    parent: DoctestModule,
+    parent: pytest.Module,
 ) -> Option[pytest.Item]:
     match parsed.kind:
         case TestKind.NONE:
@@ -98,7 +97,7 @@ def _to_item(
             if tst.examples:
                 config = parent.config
                 item = DoctestItem.from_parent(
-                    parent,
+                    parent,  # pyright: ignore[reportArgumentType]
                     name=parsed.infos.name,
                     runner=_get_runner(
                         verbose=False,
@@ -112,57 +111,78 @@ def _to_item(
             return Null()
 
 
-def _parse_md(text: str) -> Iterator[Fence]:
-    marker: str | None = None
-    fence_len = 0
-    start_lineno = 0
+class MarkdownParser(Iterator[Fence]):
+    __slots__ = ("buf", "fence_len", "inner", "marker", "start_lineno")  # pyright: ignore[reportUnannotatedClassAttribute]
     limit: Final = 3
-    buf: Vec[str] | None = None
 
-    for lineno, line in Vec.from_ref(text.splitlines()).iter().enumerate(start=1):
-        indent = len(line) - len(line.lstrip(" "))
-        stripped = line if indent > limit else line[indent:]
+    def __init__(self, text: str) -> None:
+        self.marker: Option[str] = NONE
+        self.fence_len: int = 0
+        self.start_lineno: int = 0
+        self.buf: Option[Vec[str]] = NONE
+        self.inner: PyoIterator[tuple[int, str, int]] = (
+            Vec
+            .from_ref(text.splitlines())
+            .iter()
+            .enumerate(start=1)
+            .map_star(
+                lambda lineno, line: (
+                    lineno,
+                    line,
+                    len(line) - len(line.lstrip(" ")),
+                ),
+            )
+        )
 
-        if marker is None:
-            if not stripped:
-                continue
+    def _reset(self) -> None:
+        self.marker = NONE
+        self.fence_len = 0
+        self.buf = NONE
 
-            ch = stripped[0]
-            if ch not in {"`", "~"}:
-                continue
+    @override
+    def __next__(self) -> Fence:  # ruff: ignore[too-many-return-statements]
+        lineno, line, indent = self.inner.__next__()
+        stripped = line if indent > self.limit else line[indent:]
+        match self.marker:
+            case Null():
+                if not stripped:
+                    return self.__next__()
+                else:
+                    ch = stripped[0]
+                if ch not in {"`", "~"}:
+                    return self.__next__()
+                else:
+                    n = len(stripped) - len(stripped.lstrip(ch))
+                if n < self.limit:
+                    return self.__next__()
+                else:
+                    self.marker = Some(ch)
+                    self.fence_len = n
+                    self.start_lineno = lineno + 1
 
-            n = len(stripped) - len(stripped.lstrip(ch))
-            if n < limit:
-                continue
+                    info = stripped[n:].strip()
+                    self.buf = Some(Vec[str](())) if info in PYFENCE else NONE
+                    return self.__next__()
+            case Some(marker):
+                # fermeture du fence
+                if stripped.startswith(marker):
+                    n = len(stripped) - len(stripped.lstrip(marker))
 
-            marker = ch
-            fence_len = n
-            start_lineno = lineno + 1
-
-            info = stripped[n:].strip()
-
-            buf = Vec[str](()) if info in PYFENCE else None
-            continue
-
-        # fermeture du fence
-        if stripped.startswith(marker):
-            n = len(stripped) - len(stripped.lstrip(marker))
-
-            if n >= fence_len and not stripped[n:].strip():
-                if buf is not None:
-                    yield Fence(
-                        buf.iter().join("\n"),
-                        start_lineno,
-                    )
-
-                marker = None
-                fence_len = 0
-                buf = None
-                continue
+                    if n >= self.fence_len and not stripped[n:].strip():
+                        match self.buf:
+                            case Some(b):
+                                self._reset()
+                                return Fence(
+                                    b.iter().join("\n"),
+                                    self.start_lineno,
+                                )
+                            case Null():
+                                self._reset()
+                                return self.__next__()
 
         # contenu du fence Python uniquement
-        if buf is not None:
-            buf.append(line)
+        _ = self.buf.inspect(lambda buf: buf.append(line))
+        return self.__next__()
 
 
 def _parse_pyi(

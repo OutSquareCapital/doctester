@@ -49,5 +49,4 @@ class MarkdownCodeItem(pytest.Item):
         self,
         excinfo: pytest.ExceptionInfo[BaseException],
     ) -> Traceback:
-        # Keeps only frames from the .pyi file, cutting pytest/pluggy call-stack noise.
         return excinfo.traceback.cut(path=self.path).filter(excinfo)

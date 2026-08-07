@@ -17,6 +17,7 @@ from ._definitions import (
     DOCLINE,
     GLOBS,
     Fence,
+    File,
     FileKind,
     HasDoc,
     Parsed,
@@ -28,7 +29,6 @@ from ._md import MarkdownCodeItem
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from pathlib import Path
 
     import pytest
     from pyochain.abc import PyoIterator
@@ -36,30 +36,27 @@ if TYPE_CHECKING:
 
 def collect_all_tests(
     parent: pytest.Module,
-    path: Path,
+    file: File,
 ) -> Iterator[pytest.Item]:
-    txt = path.read_text(encoding="utf-8")
-    filename = str(path)
-    match path.suffix:
+    txt = file.path.read_text(encoding="utf-8")
+    match file.kind:
         case FileKind.PYI | FileKind.PY:
-            return _parse_py(ast.parse(txt, filename), path).filter_map(
-                lambda parsed: _to_item(parsed, filename, parent)
+            return _parse_py(ast.parse(txt, file.name), file).filter_map(
+                lambda parsed: _to_item(parsed, file, parent)
             )
         case FileKind.MD:
             globs = GLOBS.copy()
             return (
                 MdParser(txt)
                 .into_iter()
-                .map(lambda fence: _fence_to_parsed(fence, path.stem, path, globs))
-                .filter_map(lambda parsed: _to_item(parsed, filename, parent))
+                .map(lambda fence: _fence_to_parsed(fence, file, globs))
+                .filter_map(lambda parsed: _to_item(parsed, file, parent))
             )
-        case _:
-            return Iter(())
 
 
 def _to_item(
     parsed: Parsed,
-    filename: str,
+    file: File,
     parent: pytest.Module,
 ) -> Option[pytest.Item]:
     match parsed.kind:
@@ -75,7 +72,7 @@ def _to_item(
             )
             return Some(item)
         case TestKind.DOCTEST:
-            if parsed.infos.path.suffix == FileKind.PY:
+            if parsed.infos.file.kind is FileKind.PY:
                 globs = parent.obj.__dict__  # pyright: ignore[reportAny]
             else:
                 globs = parsed.globs
@@ -84,7 +81,7 @@ def _to_item(
                 parsed.fence.code,
                 globs,
                 parsed.infos.name,
-                filename,
+                file.name,
                 parsed.fence.lineno,
             )
             if tst.examples:
@@ -106,21 +103,21 @@ def _to_item(
 
 def _parse_py(
     node: ast.AST,
-    path: Path,
+    file: File,
     prefix: str = "",
 ) -> PyoIterator[Parsed]:
 
     match node:
         case ast.FunctionDef():
-            infos = TestInfos(_name_from_node(node, prefix), path)
+            infos = TestInfos(_name_from_node(node, prefix), file)
             return _get_doc(node, infos)
         case ast.ClassDef():
-            infos = TestInfos(_name_from_node(node, prefix), path)
-            subnodes = _get_subnodes(node.body, infos.name, path)
+            infos = TestInfos(_name_from_node(node, prefix), file)
+            subnodes = _get_subnodes(node.body, infos.name, file)
             return _get_doc(node, infos).chain(subnodes)
         case ast.Module():
-            infos = TestInfos(path.stem, path)
-            subnodes = _get_subnodes(node.body, prefix, path)
+            infos = TestInfos(file.path.stem, file)
+            subnodes = _get_subnodes(node.body, prefix, file)
             return _get_doc(node, infos).chain(subnodes)
         case _:
             return Iter(())
@@ -141,9 +138,9 @@ def _get_doc(node: HasDoc, infos: TestInfos) -> PyoIterator[Parsed]:
 def _get_subnodes(
     nodes: list[ast.stmt],
     prefix: str,
-    path: Path,
+    file: File,
 ) -> PyoIterator[Parsed]:
-    return Iter(nodes).flat_map(lambda node: _parse_py(node, path, prefix))
+    return Iter(nodes).flat_map(lambda node: _parse_py(node, file, prefix))
 
 
 def _classify(doc: str, infos: TestInfos, doc_lineno: int) -> Parsed:
@@ -164,13 +161,11 @@ def _classify(doc: str, infos: TestInfos, doc_lineno: int) -> Parsed:
             return Parsed(Fence(doc, doc_lineno), kind, infos, globs)
 
 
-def _fence_to_parsed(
-    fence: Fence, name_prefix: str, path: Path, globs: dict[str, str]
-) -> Parsed:
+def _fence_to_parsed(fence: Fence, file: File, globs: dict[str, str]) -> Parsed:
     kind = TestKind.DOCTEST if DOCLINE in fence.code else TestKind.MARKDOWN
     return Parsed(
         Fence(fence.code, fence.lineno),
         kind,
-        TestInfos(f"{name_prefix}:{fence.lineno}", path),
+        TestInfos(f"{file.path.stem}:{fence.lineno}", file),
         globs,
     )

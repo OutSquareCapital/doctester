@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, override
 
 import pytest
 
-from ._definitions import FileKind
+from ._definitions import File, FileKind
 from ._parse import collect_all_tests
 
 if TYPE_CHECKING:
@@ -21,7 +21,9 @@ class ExtModule(pytest.Module):
 
     @override
     def collect(self) -> Iterator[pytest.Item]:
-        return collect_all_tests(self, self.path)
+
+        file = File.new(self.path)
+        return collect_all_tests(self, file)
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

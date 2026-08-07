@@ -65,3 +65,7 @@ def error_render[V]() -> None:
 
         ```
     """
+
+
+def test_foo() -> None:
+    assert 1 + 1 == 3  # ruff: ignore[magic-value-comparison]

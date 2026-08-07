@@ -43,7 +43,17 @@ class TestInfos(NamedTuple):
     """Basic, static informations about a test extracted from a docstring."""
 
     name: str
+    file: File
+
+
+class File(NamedTuple):
+    kind: FileKind
+    name: str
     path: Path
+
+    @classmethod
+    def new(cls, path: Path) -> File:
+        return cls(FileKind(path.suffix), name=str(path.stem), path=path)
 
 
 class FileKind(StrEnum):

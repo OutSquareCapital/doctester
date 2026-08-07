@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import ast
-from typing import TYPE_CHECKING, override
+from abc import ABC
+from typing import TYPE_CHECKING, Self, override
 
 import pytest
 from _pytest.assertion.rewrite import (  # ruff: ignore[import-private-name]
@@ -13,10 +14,10 @@ if TYPE_CHECKING:
 
     from _pytest._code.code import Traceback
 
+    from ._definitions import Parsed
 
-class MarkdownCodeItem(pytest.Item):
-    """A pytest item that executes a Markdown Python code block via exec()."""
 
+class MdBlockItem(pytest.Item, ABC):
     def __init__(
         self,
         *,
@@ -33,14 +34,30 @@ class MarkdownCodeItem(pytest.Item):
         self._lineno: int = lineno
         self._globs: dict[str, str] = globs
 
+    @classmethod
+    def from_parsed(cls, parsed: Parsed, parent: pytest.Collector, pad: int) -> Self:
+        padding = "\n" * (parsed.fence.lineno - pad)
+        source = padding + "def __docflex_test__():\n"
+        for line in parsed.fence.code.splitlines():
+            source += "    " + line + "\n"
+        return cls.from_parent(  # pyright: ignore[reportUnknownMemberType]
+            parent,
+            name=parsed.infos.name,
+            source=source,
+            lineno=parsed.fence.lineno,
+            globs=parsed.globs,
+        )
+
     @override
     def runtest(self) -> None:
         filename = str(self.path)
         tree = ast.parse(self._source, filename, "exec")
-        _ = ast.increment_lineno(tree, self._lineno - 1)
         rewrite_asserts(tree, self._source.encode("utf-8"), filename, self.config)
         code = compile(tree, filename, "exec")
         exec(code, self._globs)
+        # Wrap the call to avoid full tracebacks with unecessary context
+        # e.g in markdown this give the full file without wrapping
+        _ = self._globs["__docflex_test__"]()  # pyright: ignore[reportCallIssue, reportUnknownVariableType]
 
     @override
     def reportinfo(self) -> tuple[Path, int, str]:

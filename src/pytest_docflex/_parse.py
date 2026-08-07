@@ -25,7 +25,7 @@ from ._definitions import (
     TestKind,
 )
 from ._iterators import MdParser, PyParser
-from ._md import MarkdownCodeItem
+from ._md import MdBlockItem
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -54,51 +54,49 @@ def collect_all_tests(
             )
 
 
-def _to_item(
-    parsed: Parsed,
-    file: File,
-    parent: pytest.Module,
-) -> Option[pytest.Item]:
-    match parsed.kind:
-        case TestKind.NONE:
+def _to_item(parsed: Parsed, file: File, parent: pytest.Module) -> Option[pytest.Item]:
+    match parsed.kind, parsed.infos.file.kind:
+        case TestKind.NONE, _:
             return Null()
-        case TestKind.MARKDOWN:
-            item = MarkdownCodeItem.from_parent(  # pyright: ignore[reportUnknownMemberType]
-                parent,
-                name=parsed.infos.name,
-                source=parsed.fence.code,
-                lineno=parsed.fence.lineno,
-                globs=parsed.globs,
-            )
-            return Some(item)
-        case TestKind.DOCTEST:
-            if parsed.infos.file.kind is FileKind.PY:
-                globs = parent.obj.__dict__  # pyright: ignore[reportAny]
-            else:
-                globs = parsed.globs
+        case TestKind.MARKDOWN, FileKind.PYI | FileKind.PY:
+            return Some(MdBlockItem.from_parsed(parsed, parent, 2))
+        case TestKind.MARKDOWN, FileKind.MD:
+            return Some(MdBlockItem.from_parsed(parsed, parent, 1))
+        case TestKind.DOCTEST, FileKind.PY:
+            globs: dict[str, str] = parent.obj.__dict__  # pyright: ignore[reportAny]
+            return _new_doctest_item(parsed, file, globs, parent)
+        case TestKind.DOCTEST, FileKind.PYI | FileKind.MD:
+            globs = parsed.globs
+            return _new_doctest_item(parsed, file, globs, parent)
 
-            tst = DocTestParser().get_doctest(
-                parsed.fence.code,
-                globs,
-                parsed.infos.name,
-                file.name,
-                parsed.fence.lineno,
-            )
-            if tst.examples:
-                config = parent.config
-                item = DoctestItem.from_parent(
-                    parent,  # pyright: ignore[reportArgumentType]
-                    name=parsed.infos.name,
-                    runner=_get_runner(
-                        verbose=False,
-                        optionflags=get_optionflags(config),
-                        checker=_get_checker(),
-                        continue_on_failure=_get_continue_on_failure(config),
-                    ),
-                    dtest=tst,
-                )
-                return Some(item)
-            return Null()
+
+def _new_doctest_item(
+    parsed: Parsed, file: File, globs: dict[str, str], parent: pytest.Module
+) -> Option[pytest.Item]:
+
+    tst = DocTestParser().get_doctest(
+        parsed.fence.code,
+        globs,
+        parsed.infos.name,
+        file.name,
+        parsed.fence.lineno,
+    )
+    if tst.examples:
+        config = parent.config
+        item = DoctestItem.from_parent(
+            parent,  # pyright: ignore[reportArgumentType]
+            name=parsed.infos.name,
+            runner=_get_runner(
+                verbose=False,
+                optionflags=get_optionflags(config),
+                checker=_get_checker(),
+                continue_on_failure=_get_continue_on_failure(config),
+            ),
+            dtest=tst,
+        )
+        return Some(item)
+
+    return Null()
 
 
 def _parse_py(

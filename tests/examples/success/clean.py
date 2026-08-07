@@ -131,6 +131,14 @@ def function_with_complex_return() -> dict[str, list[int | None]]:
     return {}
 
 
+def unfenced_doctest() -> None:
+    """Function with un-fenced doctest.
+
+    >>> 5 - 3
+    2
+    """
+
+
 def intersection() -> None:
     """Exracted from pyochain.
 

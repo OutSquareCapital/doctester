@@ -142,3 +142,10 @@ def intersection() -> None:
         assert from_items == Vec((("b", 2), ("c", 3)))
         ```
     """
+
+def unfenced_doctest() -> None:
+    """Function with un-fenced doctest.
+
+    >>> 5 - 3
+    2
+    """

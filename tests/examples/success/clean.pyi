@@ -272,7 +272,7 @@ class Dict:
         ```
         Any object that implements the `Mapping` protocol can also be directly converted to a `Dict`:
         ```python
-        >>> from collections.abc import Mapping
+        >>> from collections.abc import Mapping, Iterable, Iterator
         >>> from dataclasses import dataclass
         >>> @dataclass
         ... class CustomMapping(Mapping[int, str]):

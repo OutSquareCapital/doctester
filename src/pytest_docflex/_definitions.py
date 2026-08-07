@@ -1,31 +1,26 @@
 from __future__ import annotations
 
 import ast
-import re
 from enum import Enum, StrEnum, auto
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Final, NamedTuple
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-MARKDOWN_BLOCK = re.compile(
-    r"^[ \t]*```(?:python|py)\n(.*?)\n[ \t]*```",
-    re.DOTALL | re.MULTILINE,
-)
-"""Pattern to extract Python code blocks from Markdown-formatted docstrings.
-
-Two flavours are supported:
-- doctest style (contains `>>>`), compared against expected output
-- "standard" style (e.g. `assert x == y`).
-
-Fence markers may be indented (e.g. nested under an "Example:" line).
-
-The captured code is dedented in `_classify` before being returned.
-"""
-
-
 type HasDoc = ast.FunctionDef | ast.ClassDef | ast.Module
 """Any AST node susceptible to have testable docstrings."""
+
+
+PY_MARKER: Final[frozenset[str]] = frozenset({"py", "python"})
+"""All possible fence markers for Python code blocks in Markdown docstrings."""
+DOCLINE = ">>>"
+"""The marker for doctest-style code blocks in Markdown docstrings."""
+FENCE_MARKERS: Final[frozenset[str]] = frozenset({"`", "~"})
+"""All possible fence markers for fenced code blocks in Markdown docstrings."""
+MD_LIMIT: Final = 3
+"""Max number of spaces allowed before a fenced code block in Markdown docstrings."""
+GLOBS: Final[dict[str, str]] = {"__name__": "__main__"}
+"""Globals for executing code blocks via `exec()`."""
 
 
 class Parsed(NamedTuple):
@@ -36,6 +31,7 @@ class Parsed(NamedTuple):
     """The kind of test extracted from the docstring (doctest, markdown, or none)."""
     infos: TestInfos
     """Basic, static information about the test (name and path)."""
+    globs: dict[str, str]
 
 
 class Fence(NamedTuple):
@@ -56,12 +52,6 @@ class FileKind(StrEnum):
     PY = ".py"
     PYI = ".pyi"
     MD = ".md"
-
-
-PYFENCE = {"py", "python"}
-"""All possible fence markers for Python code blocks in Markdown docstrings."""
-DOCLINE = ">>>"
-"""The marker for doctest-style code blocks in Markdown docstrings."""
 
 
 class TestKind(Enum):

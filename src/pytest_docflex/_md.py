@@ -24,12 +24,14 @@ class MarkdownCodeItem(pytest.Item):
         parent: pytest.Collector,
         source: str,
         lineno: int,
+        globs: dict[str, str],
         **kwargs: object,
     ) -> None:
         # pyrefly: ignore [bad-argument-type]
         super().__init__(name=name, parent=parent, **kwargs)  # pyright: ignore[reportUnknownMemberType, reportArgumentType]
         self._source: str = source
         self._lineno: int = lineno
+        self._globs: dict[str, str] = globs
 
     @override
     def runtest(self) -> None:
@@ -38,7 +40,7 @@ class MarkdownCodeItem(pytest.Item):
         _ = ast.increment_lineno(tree, self._lineno - 1)
         rewrite_asserts(tree, self._source.encode("utf-8"), filename, self.config)
         code = compile(tree, filename, "exec")
-        exec(code, {"__name__": "__main__"})  # ruff: ignore[exec-builtin]
+        exec(code, self._globs)
 
     @override
     def reportinfo(self) -> tuple[Path, int, str]:

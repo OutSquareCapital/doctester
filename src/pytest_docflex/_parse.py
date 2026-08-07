@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import ast
-import textwrap
-from collections.abc import Iterator
 from doctest import DocTestParser
-from typing import TYPE_CHECKING, Final, override
+from typing import TYPE_CHECKING
 
 from _pytest.doctest import (  # ruff: ignore[import-private-name]
     DoctestItem,
@@ -13,12 +11,11 @@ from _pytest.doctest import (  # ruff: ignore[import-private-name]
     _get_runner,  # pyright: ignore[reportPrivateUsage]
     get_optionflags,
 )
-from pyochain import NONE, Iter, Null, Option, Some, Vec, option
+from pyochain import Iter, Null, Option, Some, option
 
 from ._definitions import (
     DOCLINE,
-    MARKDOWN_BLOCK,
-    PYFENCE,
+    GLOBS,
     Fence,
     FileKind,
     HasDoc,
@@ -26,9 +23,11 @@ from ._definitions import (
     TestInfos,
     TestKind,
 )
+from ._iterators import MdParser, PyParser
 from ._md import MarkdownCodeItem
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
     import pytest
@@ -41,25 +40,18 @@ def collect_all_tests(
 ) -> Iterator[pytest.Item]:
     txt = path.read_text(encoding="utf-8")
     filename = str(path)
-    return _get_iterator(txt, path, filename).filter_map(
-        lambda parsed: _to_item(parsed, filename, parent),
-    )
-
-
-def _get_iterator(txt: str, path: Path, filename: str) -> PyoIterator[Parsed]:
     match path.suffix:
         case FileKind.PYI | FileKind.PY:
-            return _parse_pyi(
-                ast.parse(txt, filename),
-                path,
+            return _parse_py(ast.parse(txt, filename), path).filter_map(
+                lambda parsed: _to_item(parsed, filename, parent)
             )
         case FileKind.MD:
-            return Iter(MarkdownParser(txt)).map(
-                lambda fence: Parsed(
-                    fence,
-                    TestKind.DOCTEST if DOCLINE in fence.code else TestKind.MARKDOWN,
-                    TestInfos(f"{path.stem}:{fence.lineno}", path),
-                ),
+            globs = GLOBS.copy()
+            return (
+                MdParser(txt)
+                .into_iter()
+                .map(lambda fence: _fence_to_parsed(fence, path.stem, path, globs))
+                .filter_map(lambda parsed: _to_item(parsed, filename, parent))
             )
         case _:
             return Iter(())
@@ -79,13 +71,14 @@ def _to_item(
                 name=parsed.infos.name,
                 source=parsed.fence.code,
                 lineno=parsed.fence.lineno,
+                globs=parsed.globs,
             )
             return Some(item)
         case TestKind.DOCTEST:
             if parsed.infos.path.suffix == FileKind.PY:
-                globs = parent.obj.__dict__.copy()  # pyright: ignore[reportAny]
+                globs = parent.obj.__dict__  # pyright: ignore[reportAny]
             else:
-                globs = {"__name__": "__main__"}
+                globs = parsed.globs
 
             tst = DocTestParser().get_doctest(
                 parsed.fence.code,
@@ -111,81 +104,7 @@ def _to_item(
             return Null()
 
 
-class MarkdownParser(Iterator[Fence]):
-    __slots__ = ("buf", "fence_len", "inner", "marker", "start_lineno")  # pyright: ignore[reportUnannotatedClassAttribute]
-    limit: Final = 3
-
-    def __init__(self, text: str) -> None:
-        self.marker: Option[str] = NONE
-        self.fence_len: int = 0
-        self.start_lineno: int = 0
-        self.buf: Option[Vec[str]] = NONE
-        self.inner: PyoIterator[tuple[int, str, int]] = (
-            Vec
-            .from_ref(text.splitlines())
-            .iter()
-            .enumerate(start=1)
-            .map_star(
-                lambda lineno, line: (
-                    lineno,
-                    line,
-                    len(line) - len(line.lstrip(" ")),
-                ),
-            )
-        )
-
-    def _reset(self) -> None:
-        self.marker = NONE
-        self.fence_len = 0
-        self.buf = NONE
-
-    @override
-    def __next__(self) -> Fence:  # ruff: ignore[too-many-return-statements]
-        lineno, line, indent = self.inner.__next__()
-        stripped = line if indent > self.limit else line[indent:]
-        match self.marker:
-            case Null():
-                if not stripped:
-                    return self.__next__()
-                else:
-                    ch = stripped[0]
-                if ch not in {"`", "~"}:
-                    return self.__next__()
-                else:
-                    n = len(stripped) - len(stripped.lstrip(ch))
-                if n < self.limit:
-                    return self.__next__()
-                else:
-                    self.marker = Some(ch)
-                    self.fence_len = n
-                    self.start_lineno = lineno + 1
-
-                    info = stripped[n:].strip()
-                    self.buf = Some(Vec[str](())) if info in PYFENCE else NONE
-                    return self.__next__()
-            case Some(marker):
-                # fermeture du fence
-                if stripped.startswith(marker):
-                    n = len(stripped) - len(stripped.lstrip(marker))
-
-                    if n >= self.fence_len and not stripped[n:].strip():
-                        match self.buf:
-                            case Some(b):
-                                self._reset()
-                                return Fence(
-                                    b.iter().join("\n"),
-                                    self.start_lineno,
-                                )
-                            case Null():
-                                self._reset()
-                                return self.__next__()
-
-        # contenu du fence Python uniquement
-        _ = self.buf.inspect(lambda buf: buf.append(line))
-        return self.__next__()
-
-
-def _parse_pyi(
+def _parse_py(
     node: ast.AST,
     path: Path,
     prefix: str = "",
@@ -197,28 +116,18 @@ def _parse_pyi(
             return _get_doc(node, infos)
         case ast.ClassDef():
             infos = TestInfos(_name_from_node(node, prefix), path)
-            return _get_doc(node, infos).chain(
-                _get_subnodes(node.body, infos.name, path),
-            )
+            subnodes = _get_subnodes(node.body, infos.name, path)
+            return _get_doc(node, infos).chain(subnodes)
         case ast.Module():
             infos = TestInfos(path.stem, path)
-            return _get_doc(node, infos).chain(
-                _get_subnodes(node.body, prefix, path),
-            )
+            subnodes = _get_subnodes(node.body, prefix, path)
+            return _get_doc(node, infos).chain(subnodes)
         case _:
             return Iter(())
 
 
 def _name_from_node(node: ast.FunctionDef | ast.ClassDef, prefix: str) -> str:
     return f"{prefix}.{node.name}" if prefix else node.name
-
-
-def _get_subnodes(
-    nodes: list[ast.stmt],
-    prefix: str,
-    path: Path,
-) -> PyoIterator[Parsed]:
-    return Iter(nodes).flat_map(lambda node: _parse_pyi(node, path, prefix))
 
 
 def _get_doc(node: HasDoc, infos: TestInfos) -> PyoIterator[Parsed]:
@@ -229,28 +138,39 @@ def _get_doc(node: HasDoc, infos: TestInfos) -> PyoIterator[Parsed]:
     )
 
 
-def _classify(
-    doc: str,
-    infos: TestInfos,
-    doc_lineno: int,
-) -> Parsed:
-    # Kind must be decided before the fence markers are stripped by extraction,
-    # otherwise a fenced `assert`-style block can never match "```py" again.
-    match option(MARKDOWN_BLOCK.search(doc)):
-        case Some(fence):
-            code = (
-                Vec
-                .from_ref(MARKDOWN_BLOCK.findall(doc))
-                .iter()
-                .map(textwrap.dedent)
-                .join("\n")
+def _get_subnodes(
+    nodes: list[ast.stmt],
+    prefix: str,
+    path: Path,
+) -> PyoIterator[Parsed]:
+    return Iter(nodes).flat_map(lambda node: _parse_py(node, path, prefix))
+
+
+def _classify(doc: str, infos: TestInfos, doc_lineno: int) -> Parsed:
+    # TODO: Once pyochain is updated, use peekable iterator to avoid once + chain
+    globs = GLOBS.copy()
+    fences = PyParser(doc).into_iter()
+    match fences.next():
+        case Some(x):
+            source = Iter.once(x).chain(fences).map(lambda f: f.code).join("\n\n")
+            return Parsed(
+                Fence(source, x.lineno + doc_lineno),
+                TestKind.DOCTEST if DOCLINE in source else TestKind.MARKDOWN,
+                infos,
+                globs,
             )
-            # +1 skips past the fence marker line itself, down to the code.
-            lineno = doc_lineno + doc[: fence.start()].count("\n") + 1
-            fence = Fence(code, lineno)
-            kind = TestKind.DOCTEST if DOCLINE in code else TestKind.MARKDOWN
-            return Parsed(fence, kind, infos)
         case Null():
             kind = TestKind.DOCTEST if DOCLINE in doc else TestKind.NONE
-            fence = Fence(doc, doc_lineno)
-            return Parsed(fence, kind, infos)
+            return Parsed(Fence(doc, doc_lineno), kind, infos, globs)
+
+
+def _fence_to_parsed(
+    fence: Fence, name_prefix: str, path: Path, globs: dict[str, str]
+) -> Parsed:
+    kind = TestKind.DOCTEST if DOCLINE in fence.code else TestKind.MARKDOWN
+    return Parsed(
+        Fence(fence.code, fence.lineno),
+        kind,
+        TestInfos(f"{name_prefix}:{fence.lineno}", path),
+        globs,
+    )

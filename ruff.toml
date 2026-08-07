@@ -1,11 +1,14 @@
 
 lint.ignore = [
     "docstring-in-stub",        # Literally against the purpose of this plugin
+    "exec-builtin",
     "line-contains-todo",
     "missing-copyright-notice", # Ignore licence header
     "missing-todo-author",
     "missing-todo-link",
+    "missing-trailing-comma",   # It messes up with formatting
     "superfluous-else-return",  # I don't like this rule
+    "unnecessary-dunder-call",  # I'll do what I want
 ]
 lint.select = ["ALL"]
 preview = true

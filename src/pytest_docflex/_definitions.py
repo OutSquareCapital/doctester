@@ -19,7 +19,7 @@ FENCE_MARKERS: Final[frozenset[str]] = frozenset({"`", "~"})
 """All possible fence markers for fenced code blocks in Markdown docstrings."""
 MD_LIMIT: Final = 3
 """Max number of spaces allowed before a fenced code block in Markdown docstrings."""
-GLOBS: Final[dict[str, str]] = {"__name__": "__main__"}
+GLOBS: Final[dict[str, object]] = {"__name__": "__main__", "annotations": annotations}
 """Globals for executing code blocks via `exec()`."""
 
 
@@ -31,7 +31,7 @@ class Parsed(NamedTuple):
     """The kind of test extracted from the docstring (doctest, markdown, or none)."""
     infos: TestInfos
     """Basic, static information about the test (name and path)."""
-    globs: dict[str, str]
+    globs: dict[str, object]
 
 
 class Fence(NamedTuple):

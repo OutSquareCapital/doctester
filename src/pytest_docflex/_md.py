@@ -25,14 +25,14 @@ class MdBlockItem(pytest.Item, ABC):
         parent: pytest.Collector,
         source: str,
         lineno: int,
-        globs: dict[str, str],
+        globs: dict[str, object],
         **kwargs: object,
     ) -> None:
         # pyrefly: ignore [bad-argument-type]
         super().__init__(name=name, parent=parent, **kwargs)  # pyright: ignore[reportUnknownMemberType, reportArgumentType]
         self._source: str = source
         self._lineno: int = lineno
-        self._globs: dict[str, str] = globs
+        self._globs: dict[str, object] = globs
 
     @classmethod
     def from_parsed(cls, parsed: Parsed, parent: pytest.Collector, pad: int) -> Self:
@@ -53,10 +53,10 @@ class MdBlockItem(pytest.Item, ABC):
         filename = str(self.path)
         tree = ast.parse(self._source, filename, "exec")
         rewrite_asserts(tree, self._source.encode("utf-8"), filename, self.config)
-        code = compile(tree, filename, "exec")
-        exec(code, self._globs)
-        # Wrap the call to avoid full tracebacks with unecessary context
-        # e.g in markdown this give the full file without wrapping
+        code = compile(  # pyright: ignore[reportAny]
+            tree, filename, "exec", flags=annotations.compiler_flag, dont_inherit=True
+        )
+        exec(code, self._globs)  # pyright: ignore[reportAny]
         _ = self._globs["__docflex_test__"]()  # pyright: ignore[reportCallIssue, reportUnknownVariableType]
 
     @override

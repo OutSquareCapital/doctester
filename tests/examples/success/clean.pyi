@@ -249,16 +249,15 @@ class Dict:
         The most straightforward way to create a `Dict` is from a standard Python `dict`.
 
         This will copy the data, just like the built-in `dict` constructor.
-        ```python
+
         >>> from pyochain import Dict
         >>> py_dict = {1: "a", 2: "b"}
         >>> pyochain_dict = Dict(py_dict)
         >>> pyochain_dict
         Dict(1: 'a', 2: 'b')
 
-        ```
         Another common case is when you have an iterable of key-value pairs, such as the one returned by `dict::items`, or an `Iterator` of tuples.
-        ```python
+
         >>> from pyochain import Dict, Iter, Seq
         >>>
         >>> names = ("alice", "bob", "charlie", "dave")
@@ -269,10 +268,10 @@ class Dict:
         >>> records.items().iter().collect(Seq)
         Seq(('alice', 30), ('bob', 25), ('charlie', 35), ('dave', 40))
 
-        ```
+
         Any object that implements the `Mapping` protocol can also be directly converted to a `Dict`:
-        ```python
-        >>> from collections.abc import Mapping, Iterable, Iterator
+
+        >>> from collections.abc import Mapping
         >>> from dataclasses import dataclass
         >>> @dataclass
         ... class CustomMapping(Mapping[int, str]):
@@ -290,10 +289,9 @@ class Dict:
         >>> Dict(custom_mapping)
         Dict(1: 'a', 2: 'b')
 
-        ```
+
         But it can also be as minimal as an object that implements `__getitem__` and `keys`:
-        ```python
-        >>> from pyochain import Dict
+
         >>>
         >>> class MinimalDictLike:
         ...     def __init__(self, data: dict[int, str]) -> None:
@@ -309,5 +307,4 @@ class Dict:
         >>> Dict(minimal_dict_like)
         Dict(1: 'a', 2: 'b')
 
-        ```
     """  # ruff: ignore[line-too-long]

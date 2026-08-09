@@ -327,7 +327,6 @@ class Dict:
 
         But it can also be as minimal as an object that implements `__getitem__` and `keys`:
 
-        >>> from pyochain import Dict
         >>>
         >>> class MinimalDictLike:
         ...     def __init__(self, data: dict[int, str]) -> None:

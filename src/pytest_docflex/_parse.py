@@ -63,7 +63,7 @@ def _to_item(parsed: Parsed, file: File, parent: pytest.Module) -> Option[pytest
         case TestKind.MARKDOWN, FileKind.MD:
             return Some(MdBlockItem.from_parsed(parsed, parent, 1))
         case TestKind.DOCTEST, FileKind.PY:
-            globs: dict[str, str] = parent.obj.__dict__  # pyright: ignore[reportAny]
+            globs: dict[str, object] = parent.obj.__dict__  # pyright: ignore[reportAny]
             return _new_doctest_item(parsed, file, globs, parent)
         case TestKind.DOCTEST, FileKind.PYI | FileKind.MD:
             globs = parsed.globs
@@ -71,7 +71,7 @@ def _to_item(parsed: Parsed, file: File, parent: pytest.Module) -> Option[pytest
 
 
 def _new_doctest_item(
-    parsed: Parsed, file: File, globs: dict[str, str], parent: pytest.Module
+    parsed: Parsed, file: File, globs: dict[str, object], parent: pytest.Module
 ) -> Option[pytest.Item]:
 
     tst = DocTestParser().get_doctest(
@@ -159,7 +159,7 @@ def _classify(doc: str, infos: TestInfos, doc_lineno: int) -> Parsed:
             return Parsed(Fence(doc, doc_lineno), kind, infos, globs)
 
 
-def _fence_to_parsed(fence: Fence, file: File, globs: dict[str, str]) -> Parsed:
+def _fence_to_parsed(fence: Fence, file: File, globs: dict[str, object]) -> Parsed:
     kind = TestKind.DOCTEST if DOCLINE in fence.code else TestKind.MARKDOWN
     return Parsed(
         Fence(fence.code, fence.lineno),

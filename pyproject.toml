@@ -1,19 +1,24 @@
 [project]
-    dependencies    = [
-    "pyochain>=0.26.0",
-    "pytest>=9.2.0",
-]
     description     = "Pytest plugin for discovering and running doctests from Python stub files (.pyi)."
     name            = "pytest-docflex"
     readme          = "README.md"
     requires-python = ">=3.13"
     version         = "0.9.1"
 
+    dependencies = [
+        "pyochain>=0.26.0",
+
+        "pytest>=9.1.1",
+    ]
     [project.entry-points.pytest11]
         docflex = "pytest_docflex.plugin"
 
 [dependency-groups]
-    dev = ["basedpyright>=1.39.9", "ruff>=0.15.19", "sdsort>=0.5.2"]
+    dev = [
+        "basedpyright>=1.39.9",
+        "ruff>=0.15.19",
+        "sdsort>=0.5.2",
+    ]
 
 [tool.uv]
     package = true
@@ -23,9 +28,11 @@
 
 [build-system]
     build-backend = "uv_build"
-    requires      = ["uv_build==0.11.24"]
+    requires = [
+        "uv_build==0.11.24",
+    ]
 [tool.basedpyright]
-    reportExplicitAny      = false # As a library we have no choice but to use `Any` in some places, so we disable this check.
+    reportExplicitAny      = false
     reportImportCycles     = false
     reportMissingSuperCall = false
     typeCheckingMode       = "all"

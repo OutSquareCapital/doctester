@@ -48,7 +48,7 @@ def collect_all_tests(
             globs = GLOBS.copy()
             return (
                 MdParser(txt)
-                .into_iter()
+                .iter()
                 .map(lambda fence: _fence_to_parsed(fence, file, globs))
                 .filter_map(lambda parsed: _to_item(parsed, file, parent))
             )
@@ -144,10 +144,10 @@ def _get_subnodes(
 def _classify(doc: str, infos: TestInfos, doc_lineno: int) -> Parsed:
     # TODO: Once pyochain is updated, use peekable iterator to avoid once + chain
     globs = GLOBS.copy()
-    fences = PyParser(doc).into_iter()
-    match fences.next():
+    fences = PyParser(doc).iter().peekable()
+    match fences.peek():
         case Some(x):
-            source = Iter.once(x).chain(fences).map(lambda f: f.code).join("\n\n")
+            source = fences.map(lambda f: f.code).join("\n\n")
             return Parsed(
                 Fence(source, x.lineno + doc_lineno),
                 TestKind.DOCTEST if DOCLINE in source else TestKind.MARKDOWN,

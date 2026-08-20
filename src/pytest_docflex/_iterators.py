@@ -2,18 +2,15 @@ from __future__ import annotations
 
 import textwrap
 from abc import ABC
-from collections.abc import Iterator
-from typing import TYPE_CHECKING, final, override
+from typing import final, override
 
-from pyochain import NONE, Iter, Null, Option, Some, Vec
+from pyochain import NONE, Null, Option, Some, Vec
+from pyochain.abc import PyoIterator
 
 from ._definitions import FENCE_MARKERS, MD_LIMIT, PY_MARKER, Fence
 
-if TYPE_CHECKING:
-    from pyochain.abc import PyoIterator
 
-
-class ParserIterator(Iterator[Fence], ABC):
+class ParserIterator(PyoIterator[Fence], ABC):
     __slots__ = ("buf", "fence_len", "inner", "marker", "start_lineno")  # pyright: ignore[reportUnannotatedClassAttribute, reportIncompatibleUnannotatedOverride]
 
     def __init__(self, text: str) -> None:
@@ -44,9 +41,6 @@ class ParserIterator(Iterator[Fence], ABC):
         self.marker = NONE
         self.fence_len = 0
         self.buf = NONE
-
-    def into_iter(self) -> PyoIterator[Fence]:
-        return Iter(self)
 
 
 @final

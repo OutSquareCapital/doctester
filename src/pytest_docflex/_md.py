@@ -33,6 +33,7 @@ class MdBlockItem(pytest.Item, ABC):
         self._source: str = source
         self._lineno: int = lineno
         self._globs: dict[str, object] = globs
+        self._tree: ast.Module = ast.parse(self._source, str(self.path), "exec")
 
     @classmethod
     def from_parsed(cls, parsed: Parsed, parent: pytest.Collector, pad: int) -> Self:
@@ -51,10 +52,13 @@ class MdBlockItem(pytest.Item, ABC):
     @override
     def runtest(self) -> None:
         filename = str(self.path)
-        tree = ast.parse(self._source, filename, "exec")
-        rewrite_asserts(tree, self._source.encode("utf-8"), filename, self.config)
+        rewrite_asserts(self._tree, self._source.encode("utf-8"), filename, self.config)
         code = compile(  # pyright: ignore[reportAny]
-            tree, filename, "exec", flags=annotations.compiler_flag, dont_inherit=True
+            self._tree,
+            filename,
+            "exec",
+            flags=annotations.compiler_flag,
+            dont_inherit=True,
         )
         exec(code, self._globs)  # pyright: ignore[reportAny]
         _ = self._globs["__docflex_test__"]()  # pyright: ignore[reportCallIssue, reportUnknownVariableType]

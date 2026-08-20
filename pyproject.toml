@@ -1,7 +1,7 @@
 [project]
     dependencies    = [
     "pyochain>=0.26.0",
-    "pytest>=9.1.1",
+    "pytest>=9.2.0",
 ]
     description     = "Pytest plugin for discovering and running doctests from Python stub files (.pyi)."
     name            = "pytest-docflex"

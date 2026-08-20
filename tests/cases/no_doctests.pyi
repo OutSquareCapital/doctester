@@ -1,0 +1,3 @@
+def function_without_docstring(x: int) -> int: ...
+def function_with_docstring_no_tests(x: int) -> int:
+    """This function has no doctests."""

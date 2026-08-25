@@ -5,7 +5,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 version = "0.10.0"
 
-dependencies = ["pyochain==0.26.0", "pytest>=9.1.1"]
+dependencies = ["pyochain==0.27.0", "pytest>=9.1.1"]
 [project.entry-points.pytest11]
 docflex = "pytest_docflex.plugin"
 

@@ -83,6 +83,13 @@ def test_fenced_block_failure_points_to_failing_line(pytester: pytest.Pytester) 
     result.stdout.fnmatch_lines(['*raise RuntimeError("division by zero")*'])
 
 
+def test_multiple_fences_preserve_traceback_line(pytester: pytest.Pytester) -> None:
+    """Multiple fences should preserve the line of a later failure."""
+    result = pytester.runpytest(pst.COMMAND, "-v", _case("two_blocks.pyi"))
+    assert result.ret != 0
+    result.stdout.fnmatch_lines(["*assert run(10) == Ok(0.1)*"])
+
+
 def test_multiple_doctests_in_file(pytester: pytest.Pytester) -> None:
     """Multiple doctests in one file should all be collected."""
     result = pytester.runpytest(pst.COMMAND, "-v", _case("multi.pyi"))

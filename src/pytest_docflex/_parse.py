@@ -142,12 +142,11 @@ def _get_subnodes(
 
 
 def _classify(doc: str, infos: TestInfos, doc_lineno: int) -> Parsed:
-    # TODO: Once pyochain is updated, use peekable iterator to avoid once + chain
     globs = GLOBS.copy()
     fences = PyParser(doc).iter().peekable()
     match fences.peek():
         case Some(x):
-            source = fences.map(lambda f: f.code).join("\n\n")
+            source = x.code + fences.map_windows_star(2, _handle_spacing).join("")
             return Parsed(
                 Fence(source, x.lineno + doc_lineno),
                 TestKind.DOCTEST if DOCLINE in source else TestKind.MARKDOWN,
@@ -157,6 +156,13 @@ def _classify(doc: str, infos: TestInfos, doc_lineno: int) -> Parsed:
         case Null():
             kind = TestKind.DOCTEST if DOCLINE in doc else TestKind.NONE
             return Parsed(Fence(doc, doc_lineno), kind, infos, globs)
+
+
+def _handle_spacing(previous: Fence, current: Fence) -> str:
+    return (
+        "\n" * (current.lineno - previous.lineno - len(previous.code.splitlines()) + 1)
+        + current.code
+    )
 
 
 def _fence_to_parsed(fence: Fence, file: File, globs: dict[str, object]) -> Parsed:

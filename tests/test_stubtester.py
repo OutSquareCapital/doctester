@@ -9,7 +9,7 @@ import pytest
 
 import pytest_docflex as pst
 
-ROOT = Path("tests")
+ROOT = Path(__file__).resolve().parent
 CASES = ROOT.joinpath("cases")
 EXAMPLES = ROOT.joinpath("examples")
 
@@ -74,6 +74,13 @@ def test_failing_doctests(pytester: pytest.Pytester) -> None:
     result = pytester.runpytest(pst.COMMAND, "-v", _case("failing.pyi"))
     assert result.ret != 0
     result.stdout.fnmatch_lines(["*failing.pyi*FAILED*"])
+
+
+def test_fenced_block_failure_points_to_failing_line(pytester: pytest.Pytester) -> None:
+    """Fenced block failures should report the failing source line."""
+    result = pytester.runpytest(pst.COMMAND, "-v", _case("line_numbers.pyi"))
+    assert result.ret != 0
+    result.stdout.fnmatch_lines(['*raise RuntimeError("division by zero")*'])
 
 
 def test_multiple_doctests_in_file(pytester: pytest.Pytester) -> None:

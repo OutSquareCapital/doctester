@@ -13,34 +13,34 @@ lint.ignore = [
 lint.select = ["ALL"]
 preview = true
 [format]
-    docstring-code-format = true
-    preview               = true
+docstring-code-format = true
+preview = true
 [lint.pydocstyle]
-    convention = "google"
+convention = "google"
 [lint.per-file-ignores]
-    "src/pql/sql/_code_gen/*.py" = [
-        "any-type",
-        "boolean-default-value-positional-argument",
-        "boolean-type-hint-positional-argument",
-        "builtin-argument-shadowing",
-        "eq-without-hash",
-        "too-many-arguments",
-    ]
-    "t.py" = [
-        "missing-return-type-undocumented-public-function",
-        "undocumented-public-class",
-        "undocumented-public-function",
-        "undocumented-public-module",
-    ]
-    "tests/*" = [
-        "assert",
-        "boolean-type-hint-positional-argument",
-        "call-datetime-without-tzinfo",
-        "undocumented-public-class",
-        "undocumented-public-function",
-        "undocumented-public-method",
-        "undocumented-public-module",
-        "undocumented-public-package",
-    ]
+"src/pql/sql/_code_gen/*.py" = [
+    "any-type",
+    "boolean-default-value-positional-argument",
+    "boolean-type-hint-positional-argument",
+    "builtin-argument-shadowing",
+    "eq-without-hash",
+    "too-many-arguments",
+]
+"t.py" = [
+    "missing-return-type-undocumented-public-function",
+    "undocumented-public-class",
+    "undocumented-public-function",
+    "undocumented-public-module",
+]
+"tests/*" = [
+    "assert",
+    "boolean-type-hint-positional-argument",
+    "call-datetime-without-tzinfo",
+    "undocumented-public-class",
+    "undocumented-public-function",
+    "undocumented-public-method",
+    "undocumented-public-module",
+    "undocumented-public-package",
+]
 [lint.isort]
-    combine-as-imports = true
+combine-as-imports = true

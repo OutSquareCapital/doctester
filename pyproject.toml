@@ -1,41 +1,31 @@
 [project]
-    description     = "Pytest plugin for discovering and running doctests from Python stub files (.pyi)."
-    name            = "pytest-docflex"
-    readme          = "README.md"
-    requires-python = ">=3.13"
-    version         = "0.10.0"
+description = "Pytest plugin for discovering and running doctests from Python stub files (.pyi)."
+name = "pytest-docflex"
+readme = "README.md"
+requires-python = ">=3.13"
+version = "0.10.0"
 
-    dependencies = [
-        "pyochain>=0.26.0",
-
-        "pytest>=9.1.1",
-    ]
-    [project.entry-points.pytest11]
-        docflex = "pytest_docflex.plugin"
+dependencies = ["pyochain==0.26.0", "pytest>=9.1.1"]
+[project.entry-points.pytest11]
+docflex = "pytest_docflex.plugin"
 
 [dependency-groups]
-    dev = [
-        "basedpyright>=1.39.9",
-        "ruff>=0.15.19",
-        "sdsort>=0.5.2",
-    ]
+dev = ["basedpyright>=1.39.9", "ruff>=0.15.19", "sdsort>=0.5.2"]
 
 [tool.uv]
-    package = true
+package = true
 
-    [tool.uv.sources]
-        pytest_docflex = { workspace = true }
+[tool.uv.sources]
+pytest_docflex = { workspace = true }
 
 [build-system]
-    build-backend = "uv_build"
-    requires = [
-        "uv_build==0.11.24",
-    ]
+build-backend = "uv_build"
+requires = ["uv_build==0.11.24"]
 [tool.basedpyright]
-    reportExplicitAny      = false
-    reportImportCycles     = false
-    reportMissingSuperCall = false
-    typeCheckingMode       = "all"
+reportExplicitAny = false
+reportImportCycles = false
+reportMissingSuperCall = false
+typeCheckingMode = "all"
 
 [tool.pyrefly]
-    preset = "all"
+preset = "all"

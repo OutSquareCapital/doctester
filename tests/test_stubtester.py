@@ -14,10 +14,6 @@ CASES = ROOT.joinpath("cases")
 EXAMPLES = ROOT.joinpath("examples")
 
 
-def _case(name: str) -> str:
-    return str(CASES.joinpath(name))
-
-
 def test_plugin_is_registered(pytestconfig: pytest.Config) -> None:
     """Plugin should be registered with pytest."""
     plugin = pytestconfig.pluginmanager.get_plugin("docflex")
@@ -154,3 +150,7 @@ def test_markdown_fence_doctest(pytester: pytest.Pytester) -> None:
     result = pytester.runpytest(pst.COMMAND, "-v", _case("markdown.pyi"))
     assert result.ret == 0
     result.stdout.fnmatch_lines(["*markdown.pyi::foo*PASSED*"])
+
+
+def _case(name: str) -> str:
+    return str(CASES.joinpath(name))

@@ -131,7 +131,7 @@ def intersection() -> None:
         from_set = Set((1, 2))
         assert from_set.intersection({2, 3}) == Set((2,))
         assert from_set.intersection({3, 4}) == Set(())
-        dct = Dict.from_ref({"a": 1, "b": 2, "c": 3})
+        dct = Dict({"a": 1, "b": 2, "c": 3})
         from_keys = dct.keys().intersection({"b", "c", "d"}).iter().sort()
         assert from_keys == Vec(("b", "c"))
         from_items = (

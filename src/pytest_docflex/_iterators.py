@@ -4,7 +4,7 @@ import textwrap
 from abc import ABC
 from typing import final, override
 
-from pyochain import NONE, Null, Option, Some, Vec
+from pyochain import NONE, Iter, Null, Option, Some, Vec
 from pyochain.abc import PyoIterator
 
 from ._definitions import FENCE_MARKERS, MD_LIMIT, PY_MARKER, Fence
@@ -18,8 +18,8 @@ class ParserIterator(PyoIterator[Fence], ABC):
         self.fence_len: int = 0
         self.start_lineno: int = 0
         self.buf: Option[Vec[str]] = NONE
-        self.inner: PyoIterator[tuple[int, str]] = (
-            Vec.from_ref(text.splitlines()).iter().enumerate(start=1)
+        self.inner: PyoIterator[tuple[int, str]] = Iter(text.splitlines()).enumerate(
+            start=1
         )
 
     def _try_open_fence(self, txt: str, lineno: int) -> None:

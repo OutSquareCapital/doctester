@@ -2,7 +2,7 @@
 description = "Pytest plugin for discovering and running doctests from Python stub files (.pyi)."
 name = "pytest-docflex"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 version = "0.10.1"
 
 dependencies = ["pyochain>=0.27.0", "pytest>=9.1.1"]
